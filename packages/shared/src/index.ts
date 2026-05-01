@@ -1,3 +1,3 @@
-export * from './chat';
-export * from './tts';
-export * from './intent';
+export * from './chat.js';
+export * from './tts.js';
+export * from './intent.js';
