@@ -28,7 +28,7 @@ export async function* streamChat(
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
     body: JSON.stringify(req),
-    signal,
+    ...(signal ? { signal } : {}),
   });
 
   if (!res.ok || !res.body) {
@@ -84,7 +84,7 @@ export async function fetchTts(req: TtsRequest, signal?: AbortSignal): Promise<R
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
     body: JSON.stringify(req),
-    signal,
+    ...(signal ? { signal } : {}),
   });
   if (!res.ok || !res.body) {
     const text = await res.text().catch(() => '');

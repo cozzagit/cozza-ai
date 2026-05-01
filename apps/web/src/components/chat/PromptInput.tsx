@@ -5,7 +5,7 @@ interface PromptInputProps {
   onSend: (text: string) => void;
   placeholder?: string;
   /** Externally controlled text (e.g. from voice transcript). */
-  value?: string;
+  value?: string | undefined;
   onValueChange?: (v: string) => void;
 }
 

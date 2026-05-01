@@ -47,10 +47,7 @@ export class StreamingAudioPlayer {
     }
   }
 
-  private playViaMediaSource(
-    body: ReadableStream<Uint8Array>,
-    signal: AbortSignal,
-  ): Promise<void> {
+  private playViaMediaSource(body: ReadableStream<Uint8Array>, signal: AbortSignal): Promise<void> {
     return new Promise((resolve, reject) => {
       const ms = new MediaSource();
       this.cleanupObjectUrl();
@@ -78,7 +75,8 @@ export class StreamingAudioPlayer {
           if (next) {
             isAppending = true;
             try {
-              sourceBuffer.appendBuffer(next);
+              // copy to a fresh ArrayBuffer-backed view (TS2345 safety vs SharedArrayBuffer)
+              sourceBuffer.appendBuffer(next.slice().buffer);
             } catch (e) {
               reject(e);
             }
@@ -121,7 +119,7 @@ export class StreamingAudioPlayer {
 
         const pumpReader = async (): Promise<void> => {
           try {
-            while (true) {
+            for (;;) {
               if (signal.aborted) return;
               const { value, done } = await reader.read();
               if (done) {

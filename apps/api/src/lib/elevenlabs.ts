@@ -29,6 +29,6 @@ export async function streamElevenLabs(args: ElevenStreamArgs): Promise<Response
       Accept: 'audio/mpeg',
     },
     body: JSON.stringify(body),
-    signal: args.signal,
+    ...(args.signal ? { signal: args.signal } : {}),
   });
 }

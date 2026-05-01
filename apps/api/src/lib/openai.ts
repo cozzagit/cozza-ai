@@ -34,7 +34,7 @@ export async function* streamOpenAi(
       Accept: 'text/event-stream',
     },
     body: JSON.stringify(body),
-    signal: args.signal,
+    ...(args.signal ? { signal: args.signal } : {}),
   });
 
   if (!res.ok || !res.body) {

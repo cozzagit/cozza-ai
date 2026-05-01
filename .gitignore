@@ -8,6 +8,7 @@ build/
 .vite/
 .wrangler/
 .cloudflare/
+*.tsbuildinfo
 
 # Env / secrets
 .env
