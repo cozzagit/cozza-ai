@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "clean": "rimraf dist",
-    "build": "pnpm clean && tsc && tsc-alias",
+    "build": "pnpm clean && tsc && tsc-alias --resolve-full-paths",
     "start": "node dist/server.js",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
