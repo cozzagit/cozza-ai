@@ -1,0 +1,48 @@
+{
+  "name": "cozza-ai",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Personal cockpit AI PWA for Viture Beast XR + Pixel 10a",
+  "engines": {
+    "node": ">=20.18.0",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.12.0",
+  "scripts": {
+    "predev": "pnpm --filter @cozza/shared build",
+    "dev": "pnpm -r --parallel --filter \"./apps/*\" run dev",
+    "dev:web": "pnpm --filter @cozza/shared build && pnpm --filter web dev",
+    "dev:api": "pnpm --filter @cozza/shared build && pnpm --filter api dev",
+    "build": "pnpm --filter @cozza/shared build && pnpm -r --filter \"./apps/*\" run build",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm --filter @cozza/shared build && pnpm -r run typecheck",
+    "test": "pnpm --filter @cozza/shared build && pnpm -r run test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md,css,html}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md,css,html}\"",
+    "deploy:vps": "bash deploy/deploy.sh",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "husky": "^9.1.6",
+    "lint-staged": "^15.2.10",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,css,html}": [
+      "prettier --write"
+    ]
+  }
+}

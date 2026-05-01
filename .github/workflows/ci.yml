@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Lint · Typecheck · Test · Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @cozza/shared build
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build web
+        run: pnpm --filter web build
+        env:
+          VITE_API_BASE_URL: ''
+          VITE_BUILD_COMMIT: ${{ github.sha }}
+
+      - name: Build api
+        run: pnpm --filter api build
+
+      - name: Verify no secrets in web bundle
+        run: |
+          if grep -rE '(sk-(ant|proj)-|xi-api-key|sk_[a-zA-Z0-9]{20,})' apps/web/dist 2>/dev/null; then
+            echo "::error::Found a secret-looking string inside the prod web bundle"
+            exit 1
+          fi

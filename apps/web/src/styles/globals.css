@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    background: #000;
+    color: #fff;
+    overscroll-behavior: none;
+  }
+
+  body {
+    @apply font-sans text-base;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  ::selection {
+    background: rgba(0, 229, 255, 0.35);
+    color: #fff;
+  }
+
+  /* Hide scrollbars but keep scroll */
+  ::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+    color: inherit;
+    background: transparent;
+  }
+
+  /* Prevent iOS text size adjust */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Tap target minimum 48px for mobile-first */
+  button,
+  [role='button'] {
+    min-height: 44px;
+  }
+
+  /* Code blocks (markdown) */
+  pre {
+    @apply rounded-md bg-oled-100 p-3 overflow-x-auto;
+  }
+  code {
+    @apply font-mono text-[0.95em];
+  }
+  pre code {
+    @apply bg-transparent p-0;
+  }
+}
+
+@layer components {
+  .glass-surface {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01));
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(8px);
+  }
+
+  .focus-accent:focus-visible {
+    outline: 2px solid theme('colors.accent.DEFAULT');
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .text-pretty {
+    text-wrap: pretty;
+  }
+}
+
+/* highlight.js theme override to fit OLED palette */
+.hljs {
+  background: transparent !important;
+  color: #e5e7eb !important;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in,
+.hljs-name,
+.hljs-tag {
+  color: #00e5ff !important;
+}
+.hljs-string,
+.hljs-attr {
+  color: #a7f3d0 !important;
+}
+.hljs-comment {
+  color: #6b7280 !important;
+  font-style: italic;
+}
+.hljs-number,
+.hljs-literal {
+  color: #fbbf24 !important;
+}
+.hljs-function .hljs-title {
+  color: #c4b5fd !important;
+}

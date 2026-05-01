@@ -1,0 +1,16 @@
+# Default: text files use LF in repo
+* text=auto eol=lf
+
+# Shell scripts MUST be LF or they break on Linux VPS
+*.sh           text eol=lf
+deploy/deploy.sh text eol=lf
+
+# Binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg text eol=lf
+*.woff binary
+*.woff2 binary
