@@ -107,13 +107,16 @@ ln -sf /etc/nginx/sites-available/cozza-ai /etc/nginx/sites-enabled/cozza-ai
 nginx -t
 systemctl reload nginx
 
-# SSL via certbot (idempotent)
+# SSL via certbot (idempotent — always re-applies the nginx directives because
+# we just overwrote sites-available/cozza-ai with the bare HTTP config)
 if [ ! -d "/etc/letsencrypt/live/$DOMAIN" ]; then
   echo "▶ Issuing Let's Encrypt cert for $DOMAIN"
   certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --redirect -m luca.cozza@gmail.com
 else
-  echo "▶ SSL already provisioned for $DOMAIN"
+  echo "▶ Re-applying SSL directives for $DOMAIN"
+  certbot install --nginx --cert-name "$DOMAIN" --redirect --non-interactive
 fi
+nginx -t && systemctl reload nginx
 
 # Make sure /var/log/pm2 exists
 mkdir -p /var/log/pm2
