@@ -8,6 +8,8 @@ interface MessageListProps {
   isStreaming: boolean;
   onReplayAudio?: (msg: MessageRecord) => void;
   onCopy?: (msg: MessageRecord) => void;
+  /** Id of the message whose audio replay is currently playing, if any. */
+  replayingMessageId?: string | null;
 }
 
 export function MessageList({
@@ -16,6 +18,7 @@ export function MessageList({
   isStreaming,
   onReplayAudio,
   onCopy,
+  replayingMessageId = null,
 }: MessageListProps) {
   const endRef = useRef<HTMLDivElement | null>(null);
 
@@ -40,6 +43,7 @@ export function MessageList({
             key={m.id}
             role={m.role}
             content={m.content}
+            isPlaying={m.id === replayingMessageId}
             {...(m.role === 'assistant' && onReplayAudio
               ? { onReplayAudio: () => onReplayAudio(m) }
               : {})}

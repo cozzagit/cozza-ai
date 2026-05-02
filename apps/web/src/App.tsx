@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from './components/layout/AppShell';
 import { Sidebar } from './components/layout/Sidebar';
 import { ModelSelector } from './components/chat/ModelSelector';
@@ -45,10 +45,20 @@ export default function App() {
   const messages = useMessages(conversationId);
 
   // TTS
-  const { speak, stop: stopTts } = useTts({
+  const {
+    speak,
+    stop: stopTts,
+    isPlaying: ttsPlaying,
+  } = useTts({
     voiceId,
     enabled: ttsAutoplay && Boolean(voiceId),
   });
+  const [replayingMessageId, setReplayingMessageId] = useState<string | null>(null);
+
+  // When TTS finishes (or is stopped), clear the replay-tracking marker.
+  useEffect(() => {
+    if (!ttsPlaying) setReplayingMessageId(null);
+  }, [ttsPlaying]);
 
   // Chat
   const { send, cancel, retry, status, error, streamingText } = useChat({
@@ -114,21 +124,40 @@ export default function App() {
     return out;
   }, [messages]);
 
-  // Auto-open the artifacts panel the first time something visual is produced.
-  // Once the user closes it, we respect their choice (no nag re-open).
+  // Auto-open the artifacts panel every time a new visual arrives, EXCEPT
+  // if the user explicitly closed it during the current stream (we respect
+  // that until the next user message).
+  const lastArtifactCountRef = useRef(0);
+  const userClosedDuringStreamRef = useRef(false);
   useEffect(() => {
-    if (artifacts.length > 0 && !artifactsPanelOpen) {
-      // Open only on first artifact appearance per session
-      const flagKey = 'cozza-artifacts-auto-opened';
-      if (!sessionStorage.getItem(flagKey)) {
-        sessionStorage.setItem(flagKey, '1');
-        setArtifactsPanelOpen(true);
-      }
+    if (!isStreaming) userClosedDuringStreamRef.current = false;
+  }, [isStreaming]);
+  useEffect(() => {
+    const grew = artifacts.length > lastArtifactCountRef.current;
+    lastArtifactCountRef.current = artifacts.length;
+    if (grew && !artifactsPanelOpen && !userClosedDuringStreamRef.current) {
+      setArtifactsPanelOpen(true);
     }
-  }, [artifacts.length, artifactsPanelOpen, setArtifactsPanelOpen]);
+  }, [artifacts.length, artifactsPanelOpen, setArtifactsPanelOpen, isStreaming]);
+
+  const toggleArtifactsPanel = (): void => {
+    if (artifactsPanelOpen && isStreaming) {
+      userClosedDuringStreamRef.current = true;
+    }
+    setArtifactsPanelOpen(!artifactsPanelOpen);
+  };
 
   const handleReplayAudio = (msg: MessageRecord): void => {
     if (!voiceId) return;
+    // Toggle: if THIS message is the one currently playing, stop.
+    // Otherwise, stop whatever is playing and start this one.
+    if (replayingMessageId === msg.id && ttsPlaying) {
+      stopTts();
+      setReplayingMessageId(null);
+      return;
+    }
+    stopTts();
+    setReplayingMessageId(msg.id);
     void speak(msg.content);
   };
 
@@ -290,11 +319,12 @@ export default function App() {
         isStreaming={isStreaming}
         onReplayAudio={handleReplayAudio}
         onCopy={handleCopy}
+        replayingMessageId={replayingMessageId}
       />
       <ArtifactsPanel
         artifacts={artifacts}
         open={artifactsPanelOpen}
-        onToggle={() => setArtifactsPanelOpen(!artifactsPanelOpen)}
+        onToggle={toggleArtifactsPanel}
       />
       <UpdateBanner />
       <AudioUnlockBanner />

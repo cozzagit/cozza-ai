@@ -8,6 +8,8 @@ interface ChatBubbleProps {
   streaming?: boolean;
   onReplayAudio?: () => void;
   onCopy?: () => void;
+  /** True when this specific bubble's audio is currently playing. Toggles button to "Stop". */
+  isPlaying?: boolean;
 }
 
 export function ChatBubble({
@@ -16,6 +18,7 @@ export function ChatBubble({
   streaming = false,
   onReplayAudio,
   onCopy,
+  isPlaying = false,
 }: ChatBubbleProps) {
   const isUser = role === 'user';
 
@@ -85,12 +88,18 @@ export function ChatBubble({
               <button
                 type="button"
                 onClick={onReplayAudio}
-                aria-label="Riproduci audio"
-                title="Riascolta con TTS"
-                className="focus-accent text-xs rounded-md px-2 py-1 bg-white/5 hover:bg-white/10 inline-flex items-center gap-1"
+                aria-label={isPlaying ? 'Ferma audio' : 'Riproduci audio'}
+                aria-pressed={isPlaying}
+                title={isPlaying ? 'Ferma audio in riproduzione' : 'Riascolta con TTS'}
+                className={[
+                  'focus-accent text-xs rounded-md px-2 py-1 inline-flex items-center gap-1 transition-colors',
+                  isPlaying
+                    ? 'bg-accent/20 text-accent border border-accent/40 animate-pulse'
+                    : 'bg-white/5 hover:bg-white/10',
+                ].join(' ')}
               >
-                <span aria-hidden>🔊</span>
-                <span>Audio</span>
+                <span aria-hidden>{isPlaying ? '⏹' : '🔊'}</span>
+                <span>{isPlaying ? 'Stop' : 'Audio'}</span>
               </button>
             )}
             {onCopy && (
