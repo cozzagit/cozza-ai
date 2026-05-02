@@ -93,11 +93,16 @@ if grep -rE '(sk-(ant|proj)-|xi-api-key|sk_[a-zA-Z0-9]{20,})' apps/web/dist >/de
 fi
 echo "  ✓ clean"
 
-# Inject COMMIT_SHA into the api .env (replace if line exists, append otherwise)
+# Inject COMMIT_SHA into the api .env (replace if line exists, append otherwise).
+# Ensure the file ends with a newline before appending — otherwise we create a
+# concatenated line like ADMIN_TOKEN_TTL_SECONDS=86400COMMIT_SHA=… which trips Zod.
 if [ -f apps/api/.env ]; then
-  grep -q '^COMMIT_SHA=' apps/api/.env \
-    && sed -i "s/^COMMIT_SHA=.*/COMMIT_SHA=$COMMIT_SHA/" apps/api/.env \
-    || echo "COMMIT_SHA=$COMMIT_SHA" >> apps/api/.env
+  if grep -q '^COMMIT_SHA=' apps/api/.env; then
+    sed -i "s/^COMMIT_SHA=.*/COMMIT_SHA=$COMMIT_SHA/" apps/api/.env
+  else
+    [ -n "$(tail -c1 apps/api/.env)" ] && echo "" >> apps/api/.env
+    echo "COMMIT_SHA=$COMMIT_SHA" >> apps/api/.env
+  fi
 fi
 
 # Nginx config
