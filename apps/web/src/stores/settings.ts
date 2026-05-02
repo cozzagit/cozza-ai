@@ -51,7 +51,12 @@ nome linguaggio sulla prima riga, contenuto a partire dalla seconda riga.
 🎨 IMMAGINE GENERATA — la PRIMA SCELTA quando il contenuto contiene:
    oggetti, scene, persone, animali, luoghi, prodotti, atmosfere, concetti
    visualizzabili (futuro, libertà, calma, energia…), mockup di interfacce,
-   illustrazioni di idee, "fammi vedere…", "che aspetto avrebbe…", "immagina…"
+   illustrazioni di idee, "fammi vedere…", "che aspetto avrebbe…", "immagina…",
+   E ANCHE per: spiegazioni di processi naturali / biologici / chimici / fisici /
+   storici / architettonici (fotosintesi, sistema solare, anatomia, ciclo
+   dell'acqua, evoluzione, civiltà, monumenti, motori, strumenti…). In
+   questi casi, includi SEMPRE almeno UN'IMMAGINE evocativa accanto al
+   diagramma tecnico.
 
    SINTASSI ESATTA (copia il pattern e basta, niente variazioni):
 
@@ -73,14 +78,25 @@ no text in image
    \`classDiagram\` / \`erDiagram\`, mappe mentali → \`mindmap\`, timeline →
    \`timeline\` / \`gantt\`, stati → \`stateDiagram-v2\`
 
+   ⚠️ SINTASSI MERMAID — REGOLE FERREE (ogni errore rompe il render):
+   - Frecce: USA SOLO ASCII puri \`-->\` (due trattini + maggiore). NON usare
+     mai →, ⟶, ➜, em-dash —, en-dash –, ━, ⇒. NON usare mai \`---→\`.
+   - Etichette nodi tra [ ]: NIENTE accenti italiani in label complesse.
+     Se serve un accento, scrivi label tra virgolette: \`A["Università"]\`.
+   - Niente apostrofi \`'\` smart curly: solo apostrofi dritti se proprio servono.
+   - NON inserire backtick \`\`\` dentro il blocco.
+   - Una freccia per riga, max 12 nodi totali, niente colori custom.
+
+   Esempio corretto (copia il pattern):
+
 \`\`\`mermaid
 flowchart TD
   A[Inizio] --> B{Decisione}
-  B -->|Sì| C[Azione 1]
+  B -->|Si| C[Azione 1]
   B -->|No| D[Azione 2]
+  C --> E[Fine]
+  D --> E
 \`\`\`
-
-   Max 12 nodi, sintassi minimalista, niente colori custom.
 
 🪄 SVG inline — per icone, simboli, schemi minimali a blocchi:
 
@@ -184,7 +200,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'cozza-settings',
-      version: 9,
+      version: 10,
       migrate: (persisted, version) => {
         const state = persisted as Partial<SettingsState> | null;
         if (!state) return {};
@@ -261,6 +277,15 @@ Verranno renderizzati in un pannello visivo separato accanto al testo.`;
             !p.includes('DOMANDE SU INFO RECENTI') &&
             p.length < 5000
           ) {
+            state.personaPrompt = DEFAULT_PERSONA;
+          }
+        }
+        // v9 → v10: persona now hardens Mermaid syntax (ASCII arrows only)
+        // and explicitly requires an evocative image alongside the diagram
+        // for science/process explanations.
+        if (version < 10) {
+          const p = state.personaPrompt ?? '';
+          if (p.startsWith('Sei cozza-ai') && !p.includes('REGOLE FERREE') && p.length < 6500) {
             state.personaPrompt = DEFAULT_PERSONA;
           }
         }
