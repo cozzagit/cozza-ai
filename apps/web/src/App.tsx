@@ -103,12 +103,16 @@ export default function App() {
     }
   }, [voiceState, stopTts, cancel]);
 
-  // Pickup new conversationId after first send
+  // On first mount, pick the most recent conversation. After that we respect
+  // explicit user choices (incl. "+ Nuova" which sets conversationId=null).
+  const initialPickedRef = useRef(false);
   useEffect(() => {
-    if (!conversationId && conversations.length > 0 && conversations[0]) {
+    if (initialPickedRef.current) return;
+    if (conversations.length > 0 && conversations[0]) {
       setConversationId(conversations[0].id);
+      initialPickedRef.current = true;
     }
-  }, [conversations, conversationId]);
+  }, [conversations]);
 
   const handleSelectConversation = (id: string | null) => {
     setConversationId(id);
@@ -118,6 +122,27 @@ export default function App() {
   const handleNewConversation = () => {
     setConversationId(null);
     setSidebarOpen(false);
+    stopTts();
+    setReplayingMessageId(null);
+  };
+
+  const handleRenameConversation = async (id: string, newTitle: string): Promise<void> => {
+    await db.conversations.update(id, { title: newTitle.slice(0, 120) });
+  };
+
+  const handleDeleteConversation = async (id: string): Promise<void> => {
+    const target = conversations.find((c) => c.id === id);
+    const label = target?.title ? `"${target.title}"` : 'questa conversazione';
+    if (!confirm(`Eliminare ${label}?\nL'azione è irreversibile.`)) return;
+    await db.transaction('rw', [db.conversations, db.messages, db.audioBlobs], async () => {
+      await db.messages.where('conversationId').equals(id).delete();
+      await db.conversations.delete(id);
+    });
+    if (conversationId === id) {
+      setConversationId(null);
+      stopTts();
+      setReplayingMessageId(null);
+    }
   };
 
   const isStreaming = status === 'streaming';
@@ -133,10 +158,12 @@ export default function App() {
   }, [messages]);
 
   // Auto-open the artifacts panel every time a new visual arrives, EXCEPT
-  // if the user explicitly closed it during the current stream (we respect
-  // that until the next user message).
+  // if the user explicitly closed it during the current stream (respected
+  // until the next user message). Also track "seen count" so the toggle
+  // badge clears once the user actually opens the panel.
   const lastArtifactCountRef = useRef(0);
   const userClosedDuringStreamRef = useRef(false);
+  const [seenArtifactCount, setSeenArtifactCount] = useState(0);
   useEffect(() => {
     if (!isStreaming) userClosedDuringStreamRef.current = false;
   }, [isStreaming]);
@@ -147,6 +174,11 @@ export default function App() {
       setArtifactsPanelOpen(true);
     }
   }, [artifacts.length, artifactsPanelOpen, setArtifactsPanelOpen, isStreaming]);
+  // While the panel is open, mark all visible artifacts as seen.
+  useEffect(() => {
+    if (artifactsPanelOpen) setSeenArtifactCount(artifacts.length);
+  }, [artifactsPanelOpen, artifacts.length]);
+  const unseenArtifactCount = Math.max(0, artifacts.length - seenArtifactCount);
 
   const toggleArtifactsPanel = (): void => {
     if (artifactsPanelOpen && isStreaming) {
@@ -203,6 +235,8 @@ export default function App() {
           onSelect={handleSelectConversation}
           onClose={() => setSidebarOpen(false)}
           onNew={handleNewConversation}
+          onRename={handleRenameConversation}
+          onDelete={handleDeleteConversation}
         />
       }
       header={
@@ -365,6 +399,7 @@ export default function App() {
         artifacts={artifacts}
         open={artifactsPanelOpen}
         onToggle={toggleArtifactsPanel}
+        unseenCount={unseenArtifactCount}
       />
       <UpdateBanner />
       <AudioUnlockBanner />

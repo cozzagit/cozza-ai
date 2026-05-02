@@ -7,10 +7,18 @@ interface ArtifactsPanelProps {
   artifacts: Artifact[];
   open: boolean;
   onToggle: () => void;
+  /** Number of unseen new artifacts since last open. Drives the toggle badge. */
+  unseenCount?: number;
 }
 
-export function ArtifactsPanel({ artifacts, open, onToggle }: ArtifactsPanelProps) {
+export function ArtifactsPanel({
+  artifacts,
+  open,
+  onToggle,
+  unseenCount = 0,
+}: ArtifactsPanelProps) {
   const hasArtifacts = artifacts.length > 0;
+  const showBadge = !open && unseenCount > 0;
   const grouped = useMemo(() => {
     const byMessage = new Map<string, Artifact[]>();
     for (const a of artifacts) {
@@ -39,9 +47,9 @@ export function ArtifactsPanel({ artifacts, open, onToggle }: ArtifactsPanelProp
       >
         <span className="relative">
           <span aria-hidden>🖼️</span>
-          {hasArtifacts && (
-            <span className="absolute -top-1 -right-2 text-[10px] bg-accent text-black rounded-full px-1 min-w-[16px] text-center font-medium">
-              {artifacts.length}
+          {showBadge && (
+            <span className="absolute -top-1 -right-2 text-[10px] bg-accent text-black rounded-full px-1 min-w-[16px] text-center font-medium animate-pulse">
+              {unseenCount}
             </span>
           )}
         </span>
