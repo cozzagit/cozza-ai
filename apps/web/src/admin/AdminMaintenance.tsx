@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/db';
-import { fetchAdminInfo, type AdminInfo } from '@/lib/admin-api';
+import { fetchAdminInfo, fetchVoicePreview, type AdminInfo } from '@/lib/admin-api';
+import { StreamingAudioPlayer } from '@/lib/audio';
+import { useSettingsStore } from '@/stores/settings';
 
 export function AdminMaintenance() {
   const [info, setInfo] = useState<AdminInfo | null>(null);
@@ -78,6 +80,65 @@ export function AdminMaintenance() {
     }
   };
 
+  const testAudio = async (): Promise<void> => {
+    setBusy('audio');
+    setMsg(null);
+    try {
+      const voiceId = useSettingsStore.getState().voiceId;
+      if (!voiceId) {
+        setMsg('Nessuna voce impostata. Vai in Voci e scegline una.');
+        return;
+      }
+      // Unlock first (gesture user)
+      await StreamingAudioPlayer.unlock();
+      const blob = await fetchVoicePreview(
+        voiceId,
+        'Test audio. Se senti questa frase, il sistema TTS funziona correttamente.',
+      );
+      const url = URL.createObjectURL(blob);
+      const a = new Audio(url);
+      a.setAttribute('playsinline', '');
+      a.preload = 'auto';
+      a.onerror = (): void => {
+        setMsg(`Errore audio element: ${String(a.error?.code ?? 'sconosciuto')}`);
+      };
+      a.onended = (): void => {
+        URL.revokeObjectURL(url);
+        setMsg('Test audio completato. Funziona ✓');
+      };
+      try {
+        await a.play();
+        setMsg(`Riproduzione partita (${blob.size} bytes MP3, voiceId ${voiceId.slice(0, 8)}…)`);
+      } catch (e) {
+        setMsg(
+          `play() bloccato: ${e instanceof Error ? e.message : 'errore'}. ` +
+            `Probabile autoplay policy: prova a toccare il bottone microfono prima.`,
+        );
+      }
+    } catch (e) {
+      setMsg(`Test audio fallito: ${e instanceof Error ? e.message : 'errore'}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const requestMic = async (): Promise<void> => {
+    setBusy('mic');
+    setMsg(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+      setMsg('Permesso microfono concesso ✓');
+    } catch (e) {
+      setMsg(
+        `Permesso microfono negato: ${e instanceof Error ? e.message : 'errore'}. ` +
+          `Apri Impostazioni Chrome → Sito → Microfono → Consenti.`,
+      );
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <section className="rounded-xl glass-surface p-4 space-y-2">
@@ -108,6 +169,18 @@ export function AdminMaintenance() {
 
       <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Action
+          title="Test audio TTS"
+          desc="Verifica che la voce attuale si riproduca su questo device"
+          onClick={testAudio}
+          busy={busy === 'audio'}
+        />
+        <Action
+          title="Test microfono"
+          desc="Richiedi e verifica permesso microfono"
+          onClick={requestMic}
+          busy={busy === 'mic'}
+        />
+        <Action
           title="Esporta conversazioni"
           desc="Backup JSON di tutte le chat e messaggi"
           onClick={exportConversations}
@@ -126,6 +199,33 @@ export function AdminMaintenance() {
           busy={busy === 'clear'}
           danger
         />
+      </section>
+
+      <section className="rounded-xl glass-surface p-4 space-y-2">
+        <h3 className="text-sm font-semibold">Diagnostica device</h3>
+        <dl className="grid grid-cols-2 gap-y-1 text-xs">
+          <dt className="text-muted-fg/70">User-Agent</dt>
+          <dd className="font-mono text-[10px] truncate">{navigator.userAgent}</dd>
+          <dt className="text-muted-fg/70">Audio sbloccato</dt>
+          <dd className="font-mono">{StreamingAudioPlayer.isUnlocked ? '✓ sì' : '✗ no'}</dd>
+          <dt className="text-muted-fg/70">MediaSource MP3</dt>
+          <dd className="font-mono">
+            {typeof MediaSource !== 'undefined' && MediaSource.isTypeSupported('audio/mpeg')
+              ? '✓ sì'
+              : '✗ no (Blob fallback)'}
+          </dd>
+          <dt className="text-muted-fg/70">Web Speech API</dt>
+          <dd className="font-mono">
+            {typeof window.SpeechRecognition !== 'undefined' ||
+            typeof window.webkitSpeechRecognition !== 'undefined'
+              ? '✓ sì'
+              : '✗ no'}
+          </dd>
+          <dt className="text-muted-fg/70">Voce attuale</dt>
+          <dd className="font-mono text-[10px] truncate">
+            {useSettingsStore.getState().voiceId || '— non impostata —'}
+          </dd>
+        </dl>
       </section>
     </div>
   );

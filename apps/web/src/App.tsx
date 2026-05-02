@@ -7,6 +7,8 @@ import { PromptInput } from './components/chat/PromptInput';
 import { VoiceButton } from './components/voice/VoiceButton';
 import { ArtifactsPanel } from './components/artifacts/ArtifactsPanel';
 import { UpdateBanner } from './components/layout/UpdateBanner';
+import { AudioUnlockBanner } from './components/layout/AudioUnlockBanner';
+import { StreamingAudioPlayer } from './lib/audio';
 import { useChat } from './hooks/useChat';
 import { useConversations } from './hooks/useConversations';
 import { useMessages } from './hooks/useMessages';
@@ -215,7 +217,17 @@ export default function App() {
             </div>
           )}
           <div className="flex items-center gap-3 px-3 py-3 max-w-sweet-lg mx-auto w-full">
-            <VoiceButton state={voiceState} onPressStart={start} onPressEnd={stop} />
+            <VoiceButton
+              state={voiceState}
+              onPressStart={() => {
+                // First voice gesture in the session: unlock audio for autoplay
+                if (!StreamingAudioPlayer.isUnlocked) {
+                  void StreamingAudioPlayer.unlock();
+                }
+                start();
+              }}
+              onPressEnd={stop}
+            />
             <div className="flex-1 min-w-0">
               <PromptInput
                 disabled={isStreaming}
@@ -234,7 +246,13 @@ export default function App() {
             </div>
             <button
               type="button"
-              onClick={() => setTtsAutoplay(!ttsAutoplay)}
+              onClick={() => {
+                if (!ttsAutoplay && !StreamingAudioPlayer.isUnlocked) {
+                  // User is enabling TTS — perfect gesture to unlock autoplay
+                  void StreamingAudioPlayer.unlock();
+                }
+                setTtsAutoplay(!ttsAutoplay);
+              }}
               aria-pressed={ttsAutoplay}
               title={ttsAutoplay ? 'TTS attivo' : 'TTS muto'}
               className={[
@@ -268,6 +286,7 @@ export default function App() {
         onToggle={() => setArtifactsPanelOpen(!artifactsPanelOpen)}
       />
       <UpdateBanner />
+      <AudioUnlockBanner />
     </AppShell>
   );
 }

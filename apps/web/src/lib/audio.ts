@@ -1,27 +1,68 @@
 /**
  * Streaming audio player with barge-in support.
  *
- * Pipeline: HTMLAudioElement + MediaSource for progressive MP3 chunks
- * (TTFB <500ms with ElevenLabs Flash). When MediaSource is unavailable
- * or doesn't support `audio/mpeg` (jsdom, some Android quirks),
- * falls back to a single Blob URL.
+ * Pipeline:
+ *   - Desktop / Chromium with MediaSource: progressive MP3 chunks
+ *   - Mobile (Chrome Android): Blob fallback (Android MSE doesn't accept
+ *     audio/mpeg; ArrayBuffer + URL.createObjectURL is the safe path)
  *
- * `abort()` triggers barge-in: cancels the upstream fetch reader,
- * stops playback and revokes the object URL.
+ * Autoplay policy: `audio.play()` returns a Promise that REJECTS on
+ * mobile when the call isn't tied to a recent user gesture. We catch
+ * that, dispatch a `cozza:audio-blocked` event the UI can listen to in
+ * order to show a "Tap to enable audio" banner, and a one-time `unlock()`
+ * gesture flips the player into "always allowed" mode.
+ *
+ * `abort()` triggers barge-in: cancels the upstream fetch reader, stops
+ * playback and revokes the object URL.
  */
 export class StreamingAudioPlayer {
   private audio: HTMLAudioElement;
   private controller: AbortController | null = null;
   private currentObjectUrl: string | null = null;
   private onEndedCallback: (() => void) | null = null;
+  private static unlocked = false;
 
   constructor() {
     this.audio = new Audio();
-    this.audio.preload = 'auto';
+    // 'none' on mobile to avoid wasting bandwidth on first sentence
+    this.audio.preload = 'none';
+    this.audio.setAttribute('playsinline', '');
     this.audio.crossOrigin = 'anonymous';
     this.audio.addEventListener('ended', () => {
       this.onEndedCallback?.();
     });
+    this.audio.addEventListener('error', (ev) => {
+      console.warn('[audio] element error', ev, this.audio.error);
+    });
+  }
+
+  static get isUnlocked(): boolean {
+    return StreamingAudioPlayer.unlocked;
+  }
+
+  /**
+   * Call from a synchronous user-gesture handler (e.g. a button onClick)
+   * to satisfy the autoplay policy for the rest of the session.
+   * Plays a tiny silent buffer; resolves on success.
+   */
+  static async unlock(): Promise<boolean> {
+    if (StreamingAudioPlayer.unlocked) return true;
+    try {
+      // 0.1s of silence as a base64 mp3 (RFC frame, no payload)
+      const SILENT_MP3 =
+        'data:audio/mpeg;base64,SUQzAwAAAAAAFlRFTkMAAAAMAAADTGF2ZjU3LjUuMTAA//uQAAAAAAAAAAAAAAAAAAAAAAAA';
+      const a = new Audio(SILENT_MP3);
+      a.preload = 'auto';
+      a.muted = false;
+      a.setAttribute('playsinline', '');
+      await a.play();
+      a.pause();
+      StreamingAudioPlayer.unlocked = true;
+      window.dispatchEvent(new CustomEvent('cozza:audio-unlocked'));
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   onEnded(cb: () => void): void {
@@ -35,13 +76,23 @@ export class StreamingAudioPlayer {
     const signal = this.controller.signal;
     if (!res.body) throw new Error('Response body missing');
 
+    const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+    const isAndroid = /Android/i.test(ua);
+    const isIos = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Mac') && 'ontouchend' in document);
     const supportsMse =
       typeof MediaSource !== 'undefined' &&
       typeof MediaSource.isTypeSupported === 'function' &&
       MediaSource.isTypeSupported('audio/mpeg');
 
-    if (supportsMse) {
-      await this.playViaMediaSource(res.body, signal);
+    // On Android/iOS, even if MSE reports support for audio/mpeg, behavior
+    // is flaky. Force the simpler Blob path for predictable mobile audio.
+    if (supportsMse && !isAndroid && !isIos) {
+      try {
+        await this.playViaMediaSource(res.body, signal);
+      } catch (e) {
+        console.warn('[audio] MSE failed, falling back to blob', e);
+        await this.playViaBlob(res, signal);
+      }
     } else {
       await this.playViaBlob(res, signal);
     }
@@ -54,7 +105,7 @@ export class StreamingAudioPlayer {
       this.currentObjectUrl = URL.createObjectURL(ms);
       this.audio.src = this.currentObjectUrl;
 
-      const onSourceOpen = () => {
+      const onSourceOpen = (): void => {
         ms.removeEventListener('sourceopen', onSourceOpen);
         let sourceBuffer: SourceBuffer;
         try {
@@ -75,7 +126,6 @@ export class StreamingAudioPlayer {
           if (next) {
             isAppending = true;
             try {
-              // copy to a fresh ArrayBuffer-backed view (TS2345 safety vs SharedArrayBuffer)
               sourceBuffer.appendBuffer(next.slice().buffer);
             } catch (e) {
               reject(e);
@@ -86,7 +136,7 @@ export class StreamingAudioPlayer {
             try {
               ms.endOfStream();
             } catch {
-              // ignore — already closed
+              // ignore
             }
           }
         };
@@ -95,12 +145,12 @@ export class StreamingAudioPlayer {
           isAppending = false;
           if (!started) {
             started = true;
-            this.audio.play().then(resolve).catch(reject);
+            this.tryPlay().then(resolve).catch(reject);
           }
           drain();
         });
 
-        const onAbort = () => {
+        const onAbort = (): void => {
           try {
             void reader.cancel();
           } catch {
@@ -150,7 +200,33 @@ export class StreamingAudioPlayer {
     this.cleanupObjectUrl();
     this.currentObjectUrl = URL.createObjectURL(blob);
     this.audio.src = this.currentObjectUrl;
-    await this.audio.play();
+    await this.tryPlay();
+  }
+
+  private async tryPlay(): Promise<void> {
+    try {
+      await this.audio.play();
+    } catch (e) {
+      const isAutoplayBlock =
+        e instanceof Error &&
+        (e.name === 'NotAllowedError' || /interact|gesture|user activation/i.test(e.message));
+      if (isAutoplayBlock) {
+        console.warn('[audio] autoplay blocked — emitting cozza:audio-blocked');
+        window.dispatchEvent(
+          new CustomEvent('cozza:audio-blocked', {
+            detail: { reason: e.message },
+          }),
+        );
+        return; // soft fail: don't reject the chat flow
+      }
+      console.error('[audio] play() failed', e);
+      window.dispatchEvent(
+        new CustomEvent('cozza:audio-error', {
+          detail: { message: e instanceof Error ? e.message : 'audio error' },
+        }),
+      );
+      throw e;
+    }
   }
 
   abort(): void {

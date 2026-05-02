@@ -25,7 +25,15 @@ interface SettingsState {
 
 const ENV_DEFAULT_MODEL =
   (import.meta.env.VITE_DEFAULT_MODEL as ChatModel | undefined) ?? 'gpt-4o-mini';
-const ENV_DEFAULT_VOICE_ID = (import.meta.env.VITE_ELEVENLABS_VOICE_ID as string | undefined) ?? '';
+/**
+ * Default voice = Samanta (Italian native, warm/deep, narrative_story).
+ * Shipped as the out-of-the-box default so first-launch on a fresh device
+ * (e.g. mobile install) immediately produces audio without a manual setup
+ * step in /admin#voices. Users can change it any time.
+ */
+const SAMANTA_VOICE_ID = 'fQmr8dTaOQq116mo2X7F';
+const ENV_DEFAULT_VOICE_ID =
+  (import.meta.env.VITE_ELEVENLABS_VOICE_ID as string | undefined) || SAMANTA_VOICE_ID;
 
 const DEFAULT_PERSONA = `Sei cozza-ai, l'assistente personale di Luca Cozza nel suo cockpit per Viture Beast XR.
 Rispondi sempre in italiano informale, in modo conciso e diretto. Niente preamboli, niente disclaimer
@@ -64,7 +72,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'cozza-settings',
-      version: 4,
+      version: 5,
       migrate: (persisted, version) => {
         const state = persisted as Partial<SettingsState> | null;
         if (!state) return {};
@@ -90,12 +98,14 @@ export const useSettingsStore = create<SettingsState>()(
 Rispondi sempre in italiano informale, in modo conciso e diretto. Niente preamboli, niente disclaimer
 inutili. Quando serve struttura usa elenchi puntati brevi. Quando Luca chiede aiuto su codice, vai dritto
 alla soluzione. Se non sai qualcosa, dillo in una frase.`;
-          return {
-            ...state,
-            artifactsPanelOpen: state.artifactsPanelOpen ?? false,
-            personaPrompt:
-              state.personaPrompt === prevDefault ? DEFAULT_PERSONA : state.personaPrompt,
-          };
+          state.artifactsPanelOpen = state.artifactsPanelOpen ?? false;
+          if (state.personaPrompt === prevDefault) state.personaPrompt = DEFAULT_PERSONA;
+        }
+        // v4 → v5: ship Samanta as default voice on devices that never set one
+        if (version < 5) {
+          if (!state.voiceId || state.voiceId.trim() === '') {
+            state.voiceId = SAMANTA_VOICE_ID;
+          }
         }
         return state;
       },
