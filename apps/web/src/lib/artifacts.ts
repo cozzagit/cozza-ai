@@ -120,3 +120,22 @@ export function stripFences(content: string, kinds: ArtifactKind[]): string {
     return whole;
   });
 }
+
+/**
+ * Returns `text` with all fenced code blocks removed (complete OR still
+ * streaming). Used by the sentence chunker so TTS never reads aloud raw
+ * image-prompt / mermaid / svg / html source. A still-open block (no
+ * closing ```) is also dropped so we don't speak half a prompt while it
+ * is still being generated.
+ */
+export function stripFencesForTts(text: string): string {
+  let out = text.replace(FENCE_RE, ' ');
+  const lastOpen = out.lastIndexOf('```');
+  if (lastOpen !== -1) {
+    const after = out.slice(lastOpen + 3);
+    if (!after.includes('```')) {
+      out = out.slice(0, lastOpen);
+    }
+  }
+  return out;
+}

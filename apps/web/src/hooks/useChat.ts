@@ -5,6 +5,7 @@ import { db, type MessageRecord, type Conversation } from '@/lib/db';
 import { PROVIDER_BY_MODEL, type ChatModel, type ChatMessage } from '@cozza/shared';
 import { useSettingsStore } from '@/stores/settings';
 import { log } from '@/lib/debug-log';
+import { stripFencesForTts } from '@/lib/artifacts';
 
 export type ChatStatus = 'idle' | 'streaming' | 'error';
 
@@ -109,7 +110,11 @@ export function useChat(opts: UseChatOptions) {
         setStatus('streaming');
         log.info('chat.stream', 'open', { provider, msgCount: messages.length });
 
-        let lastFlushIdx = 0;
+        // We track sentence boundaries on a TTS-eligible view of the buffer:
+        // fenced code blocks (image-prompt, mermaid, svg, html, …) are stripped
+        // so TTS NEVER reads them aloud. `buf` keeps the full original text
+        // for chat rendering / persistence.
+        let ttsLastFlushIdx = 0;
         let inputTokens = 0;
         let outputTokens = 0;
 
@@ -118,13 +123,14 @@ export function useChat(opts: UseChatOptions) {
           if (evt.type === 'delta') {
             buf += evt.text;
             setStreamingText(buf);
-            const slice = buf.slice(lastFlushIdx);
+            const ttsView = stripFencesForTts(buf);
+            const slice = ttsView.slice(ttsLastFlushIdx);
             const match = slice.match(/[.!?]\s/);
             if (match && match.index !== undefined) {
-              const end = lastFlushIdx + match.index + 1;
-              const sentence = buf.slice(lastFlushIdx, end).trim();
+              const end = ttsLastFlushIdx + match.index + 1;
+              const sentence = ttsView.slice(ttsLastFlushIdx, end).trim();
               if (sentence.length > 0) sentenceRef.current?.(sentence);
-              lastFlushIdx = end;
+              ttsLastFlushIdx = end;
             }
           } else if (evt.type === 'done') {
             inputTokens = evt.usage?.inputTokens ?? 0;
@@ -133,7 +139,8 @@ export function useChat(opts: UseChatOptions) {
             throw new ApiError(evt.message, 500, evt.code);
           }
         }
-        const tail = buf.slice(lastFlushIdx).trim();
+        const ttsViewFinal = stripFencesForTts(buf);
+        const tail = ttsViewFinal.slice(ttsLastFlushIdx).trim();
         if (tail.length > 0) sentenceRef.current?.(tail);
 
         if (!buf.trim()) {

@@ -1,6 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { ChatBubble } from './ChatBubble';
 import type { MessageRecord } from '@/lib/db';
+import { stripFences } from '@/lib/artifacts';
+
+const HIDDEN_FENCE_KINDS = ['image-prompt', 'mermaid', 'svg', 'html', 'chart'] as const;
 
 interface MessageListProps {
   messages: MessageRecord[];
@@ -40,24 +43,36 @@ export function MessageList({
           </div>
         )}
 
-        {messages.map((m) => (
-          <ChatBubble
-            key={m.id}
-            role={m.role}
-            content={m.content}
-            isPlaying={m.id === replayingMessageId}
-            {...(m.role === 'assistant' && onReplayAudio
-              ? { onReplayAudio: () => onReplayAudio(m) }
-              : {})}
-            {...(m.role === 'assistant' && onCopy ? { onCopy: () => onCopy(m) } : {})}
-            {...(m.role === 'assistant' && onGenerateImage
-              ? { onGenerateImage: () => onGenerateImage(m) }
-              : {})}
-          />
-        ))}
+        {messages.map((m) => {
+          // Hide fenced blocks already rendered in the artifacts panel
+          // (image-prompt/mermaid/svg/html) so the chat bubble shows only
+          // the conversational text. Markdown tables, inline `code`, and
+          // generic ```code``` blocks remain visible.
+          const displayContent =
+            m.role === 'assistant' ? stripFences(m.content, [...HIDDEN_FENCE_KINDS]) : m.content;
+          return (
+            <ChatBubble
+              key={m.id}
+              role={m.role}
+              content={displayContent}
+              isPlaying={m.id === replayingMessageId}
+              {...(m.role === 'assistant' && onReplayAudio
+                ? { onReplayAudio: () => onReplayAudio(m) }
+                : {})}
+              {...(m.role === 'assistant' && onCopy ? { onCopy: () => onCopy(m) } : {})}
+              {...(m.role === 'assistant' && onGenerateImage
+                ? { onGenerateImage: () => onGenerateImage(m) }
+                : {})}
+            />
+          );
+        })}
 
         {isStreaming && streamingText && (
-          <ChatBubble role="assistant" content={streamingText} streaming />
+          <ChatBubble
+            role="assistant"
+            content={stripFences(streamingText, [...HIDDEN_FENCE_KINDS])}
+            streaming
+          />
         )}
 
         <div ref={endRef} aria-hidden className="h-2" />

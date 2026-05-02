@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { Artifact } from '@/lib/artifacts';
 import { MermaidView } from './MermaidView';
 import { ImagePromptView } from './ImagePromptView';
@@ -28,6 +28,17 @@ export function ArtifactsPanel({
     }
     return [...byMessage.entries()];
   }, [artifacts]);
+
+  // Scroll the drawer to the latest artifact when the panel opens or when a
+  // new one arrives while it's open. Using `block: 'end'` so the user lands
+  // on the freshly added card instead of the historical first one.
+  const endRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    requestAnimationFrame(() => {
+      endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    });
+  }, [open, artifacts.length]);
 
   return (
     <>
@@ -106,6 +117,7 @@ export function ArtifactsPanel({
               </section>
             ))
           )}
+          <div ref={endRef} aria-hidden className="h-2" />
         </div>
       </aside>
     </>

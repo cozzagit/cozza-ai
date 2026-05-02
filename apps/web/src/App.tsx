@@ -20,7 +20,7 @@ import { useTts } from './hooks/useTts';
 import { useVoiceInput } from './hooks/useVoiceInput';
 import { useSettingsStore } from './stores/settings';
 import { useWorkspaceStore } from './stores/workspace';
-import { extractArtifacts, type Artifact } from './lib/artifacts';
+import { extractArtifacts, stripFencesForTts, type Artifact } from './lib/artifacts';
 import type { MessageRecord } from './lib/db';
 
 export default function App() {
@@ -189,8 +189,6 @@ export default function App() {
 
   const handleReplayAudio = (msg: MessageRecord): void => {
     if (!voiceId) return;
-    // Toggle: if THIS message is the one currently playing, stop.
-    // Otherwise, stop whatever is playing and start this one.
     if (replayingMessageId === msg.id && ttsPlaying) {
       stopTts();
       setReplayingMessageId(null);
@@ -198,7 +196,10 @@ export default function App() {
     }
     stopTts();
     setReplayingMessageId(msg.id);
-    void speak(msg.content);
+    // Strip fenced code blocks so the replay doesn't read aloud the raw
+    // image-prompt / mermaid / svg / html source.
+    const spoken = stripFencesForTts(msg.content).trim();
+    if (spoken) void speak(spoken);
   };
 
   const handleCopy = (msg: MessageRecord): void => {

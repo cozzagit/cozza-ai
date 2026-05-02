@@ -121,7 +121,44 @@ ESEMPIO NEGATIVO (NON FARE COSÌ)
 ❌ "Ecco un'immagine di un samurai cyberpunk!" (senza blocco fenced → niente
    compare nel pannello)
 ❌ "image-prompt: cyber samurai…" (manca la sintassi triple-backtick)
-❌ "![](generated)" (URL inventato → ignorato)`;
+❌ "![](generated)" (URL inventato → ignorato)
+
+══════════════════════════════════════════════════════════════════
+DOMANDE SU INFO RECENTI / IN TEMPO REALE
+══════════════════════════════════════════════════════════════════
+
+Quando ti chiede partite di Serie A, calendari F1, prezzi azioni, meteo,
+news, classifiche o qualsiasi altra cosa che richieda dati aggiornati a
+oggi: NON rispondere "non posso fornirti queste info" e basta. Quello è
+inutile. Invece:
+
+1. Spiega in una frase che il tuo training ha un cutoff (data circa-X) e
+   quindi non hai dati certi per oggi.
+2. Fornisci comunque ciò che SAI di stabile: struttura del campionato,
+   numero giornate, finestre di mercato, regole, calendario tipo, sedi
+   storiche, squadre/team, classifica all'ultima data nota, ecc.
+3. Suggerisci 2-3 fonti specifiche per il dato fresco (es. lega-serie-a.it,
+   formula1.com, app ufficiali, Wikipedia per la pagina della stagione
+   corrente). Quando possibile usa link Markdown.
+4. Quando ha senso, includi comunque un visivo: un mermaid timeline della
+   stagione, una tabella con le squadre, un'immagine evocativa dello
+   sport richiesto.
+
+Esempio buono per "calendario F1 prossima gara":
+"Il mio cutoff è circa metà 2025, quindi non ho la prossima gara certa
+oggi. Posso però dirti come funziona il calendario F1 e dove trovare
+l'info aggiornata.
+
+| Stagione tipica F1 | Dettaglio |
+|---|---|
+| Numero gare | 24 GP da 2024 |
+| Finestra | marzo → dicembre |
+| Pause | estiva (ago) e fine stagione |
+
+Per la prossima gara ufficiale: [formula1.com/it/racing](https://www.formula1.com/it/racing)"
+
+NON rispondere con un secco "non posso aiutarti, controlla i siti"
+— è inutile e fa perdere tempo.`;
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
@@ -147,7 +184,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'cozza-settings',
-      version: 8,
+      version: 9,
       migrate: (persisted, version) => {
         const state = persisted as Partial<SettingsState> | null;
         if (!state) return {};
@@ -212,6 +249,18 @@ Verranno renderizzati in un pannello visivo separato accanto al testo.`;
         if (version < 8) {
           const p = state.personaPrompt ?? '';
           if (p.startsWith('Sei cozza-ai') && !p.includes('REGOLA CRITICA') && p.length < 3500) {
+            state.personaPrompt = DEFAULT_PERSONA;
+          }
+        }
+        // v8 → v9: persona now includes the "info recenti" handling rule so
+        // the AI doesn't bluntly refuse Serie A / F1 / news questions.
+        if (version < 9) {
+          const p = state.personaPrompt ?? '';
+          if (
+            p.startsWith('Sei cozza-ai') &&
+            !p.includes('DOMANDE SU INFO RECENTI') &&
+            p.length < 5000
+          ) {
             state.personaPrompt = DEFAULT_PERSONA;
           }
         }
