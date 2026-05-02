@@ -11,6 +11,7 @@ interface SettingsState {
   voiceId: string;
   personaPrompt: string;
   temperature: number;
+  artifactsPanelOpen: boolean;
   setDefaultModel: (m: ChatModel) => void;
   setVoiceEnabled: (v: boolean) => void;
   setTtsAutoplay: (v: boolean) => void;
@@ -19,6 +20,7 @@ interface SettingsState {
   setVoiceId: (v: string) => void;
   setPersonaPrompt: (v: string) => void;
   setTemperature: (v: number) => void;
+  setArtifactsPanelOpen: (v: boolean) => void;
 }
 
 const ENV_DEFAULT_MODEL =
@@ -28,7 +30,15 @@ const ENV_DEFAULT_VOICE_ID = (import.meta.env.VITE_ELEVENLABS_VOICE_ID as string
 const DEFAULT_PERSONA = `Sei cozza-ai, l'assistente personale di Luca Cozza nel suo cockpit per Viture Beast XR.
 Rispondi sempre in italiano informale, in modo conciso e diretto. Niente preamboli, niente disclaimer
 inutili. Quando serve struttura usa elenchi puntati brevi. Quando Luca chiede aiuto su codice, vai dritto
-alla soluzione. Se non sai qualcosa, dillo in una frase.`;
+alla soluzione. Se non sai qualcosa, dillo in una frase.
+
+Quando può aiutare la comprensione, includi visualizzazioni:
+- diagrammi e flow chart con blocchi \`\`\`mermaid\`\`\` (graph TD, sequenceDiagram, flowchart, gantt)
+- immagini con la sintassi markdown ![didascalia](url) quando hai un URL valido
+- SVG inline con blocchi \`\`\`svg\`\`\` per icone o disegni semplici
+- HTML preview con blocchi \`\`\`html\`\`\` solo se richiesto esplicitamente
+
+Verranno renderizzati in un pannello visivo separato accanto al testo.`;
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
@@ -41,6 +51,7 @@ export const useSettingsStore = create<SettingsState>()(
       voiceId: ENV_DEFAULT_VOICE_ID,
       personaPrompt: DEFAULT_PERSONA,
       temperature: 0.7,
+      artifactsPanelOpen: false,
       setDefaultModel: (m) => set({ defaultModel: m }),
       setVoiceEnabled: (v) => set({ voiceEnabled: v }),
       setTtsAutoplay: (v) => set({ ttsAutoplay: v }),
@@ -49,10 +60,11 @@ export const useSettingsStore = create<SettingsState>()(
       setVoiceId: (v) => set({ voiceId: v }),
       setPersonaPrompt: (v) => set({ personaPrompt: v }),
       setTemperature: (v) => set({ temperature: v }),
+      setArtifactsPanelOpen: (v) => set({ artifactsPanelOpen: v }),
     }),
     {
       name: 'cozza-settings',
-      version: 3,
+      version: 4,
       migrate: (persisted, version) => {
         const state = persisted as Partial<SettingsState> | null;
         if (!state) return {};
@@ -69,6 +81,20 @@ export const useSettingsStore = create<SettingsState>()(
             voiceId: state.voiceId ?? ENV_DEFAULT_VOICE_ID,
             personaPrompt: state.personaPrompt ?? DEFAULT_PERSONA,
             temperature: state.temperature ?? 0.7,
+          };
+        }
+        // v3 → v4: artifactsPanelOpen + persona prompt updated to mention artifacts
+        if (version < 4) {
+          // If user kept the previous default persona, upgrade it; otherwise preserve.
+          const prevDefault = `Sei cozza-ai, l'assistente personale di Luca Cozza nel suo cockpit per Viture Beast XR.
+Rispondi sempre in italiano informale, in modo conciso e diretto. Niente preamboli, niente disclaimer
+inutili. Quando serve struttura usa elenchi puntati brevi. Quando Luca chiede aiuto su codice, vai dritto
+alla soluzione. Se non sai qualcosa, dillo in una frase.`;
+          return {
+            ...state,
+            artifactsPanelOpen: state.artifactsPanelOpen ?? false,
+            personaPrompt:
+              state.personaPrompt === prevDefault ? DEFAULT_PERSONA : state.personaPrompt,
           };
         }
         return state;

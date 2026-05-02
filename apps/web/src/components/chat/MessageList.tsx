@@ -6,9 +6,17 @@ interface MessageListProps {
   messages: MessageRecord[];
   streamingText: string;
   isStreaming: boolean;
+  onReplayAudio?: (msg: MessageRecord) => void;
+  onCopy?: (msg: MessageRecord) => void;
 }
 
-export function MessageList({ messages, streamingText, isStreaming }: MessageListProps) {
+export function MessageList({
+  messages,
+  streamingText,
+  isStreaming,
+  onReplayAudio,
+  onCopy,
+}: MessageListProps) {
   const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -28,7 +36,15 @@ export function MessageList({ messages, streamingText, isStreaming }: MessageLis
         )}
 
         {messages.map((m) => (
-          <ChatBubble key={m.id} role={m.role} content={m.content} />
+          <ChatBubble
+            key={m.id}
+            role={m.role}
+            content={m.content}
+            {...(m.role === 'assistant' && onReplayAudio
+              ? { onReplayAudio: () => onReplayAudio(m) }
+              : {})}
+            {...(m.role === 'assistant' && onCopy ? { onCopy: () => onCopy(m) } : {})}
+          />
         ))}
 
         {isStreaming && streamingText && (

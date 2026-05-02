@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AppShell } from './components/layout/AppShell';
 import { Sidebar } from './components/layout/Sidebar';
 import { ModelSelector } from './components/chat/ModelSelector';
 import { MessageList } from './components/chat/MessageList';
 import { PromptInput } from './components/chat/PromptInput';
 import { VoiceButton } from './components/voice/VoiceButton';
+import { ArtifactsPanel } from './components/artifacts/ArtifactsPanel';
+import { UpdateBanner } from './components/layout/UpdateBanner';
 import { useChat } from './hooks/useChat';
 import { useConversations } from './hooks/useConversations';
 import { useMessages } from './hooks/useMessages';
@@ -12,6 +14,8 @@ import { useTts } from './hooks/useTts';
 import { useVoiceInput } from './hooks/useVoiceInput';
 import { useSettingsStore } from './stores/settings';
 import { useWorkspaceStore } from './stores/workspace';
+import { extractArtifacts, type Artifact } from './lib/artifacts';
+import type { MessageRecord } from './lib/db';
 
 export default function App() {
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -24,6 +28,8 @@ export default function App() {
   const ttsAutoplay = useSettingsStore((s) => s.ttsAutoplay);
   const setTtsAutoplay = useSettingsStore((s) => s.setTtsAutoplay);
   const voiceId = useSettingsStore((s) => s.voiceId);
+  const artifactsPanelOpen = useSettingsStore((s) => s.artifactsPanelOpen);
+  const setArtifactsPanelOpen = useSettingsStore((s) => s.setArtifactsPanelOpen);
 
   // V1 hook predisposto: subscribe (no-op) garantisce che lo store sia montato.
   // UI MVP non legge `active`. Esposto su window.__cozza per debug.
@@ -95,6 +101,38 @@ export default function App() {
   };
 
   const isStreaming = status === 'streaming';
+
+  // Visual artifacts extracted from assistant messages
+  const artifacts = useMemo<Artifact[]>(() => {
+    const out: Artifact[] = [];
+    for (const m of messages) {
+      if (m.role !== 'assistant') continue;
+      out.push(...extractArtifacts(m.id, m.content));
+    }
+    return out;
+  }, [messages]);
+
+  // Auto-open the artifacts panel the first time something visual is produced.
+  // Once the user closes it, we respect their choice (no nag re-open).
+  useEffect(() => {
+    if (artifacts.length > 0 && !artifactsPanelOpen) {
+      // Open only on first artifact appearance per session
+      const flagKey = 'cozza-artifacts-auto-opened';
+      if (!sessionStorage.getItem(flagKey)) {
+        sessionStorage.setItem(flagKey, '1');
+        setArtifactsPanelOpen(true);
+      }
+    }
+  }, [artifacts.length, artifactsPanelOpen, setArtifactsPanelOpen]);
+
+  const handleReplayAudio = (msg: MessageRecord): void => {
+    if (!voiceId) return;
+    void speak(msg.content);
+  };
+
+  const handleCopy = (msg: MessageRecord): void => {
+    void navigator.clipboard?.writeText(msg.content);
+  };
 
   return (
     <AppShell
@@ -212,7 +250,24 @@ export default function App() {
         </div>
       }
     >
-      <MessageList messages={messages} streamingText={streamingText} isStreaming={isStreaming} />
+      {error && (
+        <div className="px-4 py-2 mx-3 my-2 max-w-sweet-lg sm:mx-auto w-auto rounded-md text-sm text-red-300 bg-red-950/40 border border-red-900/40">
+          <strong className="font-semibold">Errore:</strong> {error}
+        </div>
+      )}
+      <MessageList
+        messages={messages}
+        streamingText={streamingText}
+        isStreaming={isStreaming}
+        onReplayAudio={handleReplayAudio}
+        onCopy={handleCopy}
+      />
+      <ArtifactsPanel
+        artifacts={artifacts}
+        open={artifactsPanelOpen}
+        onToggle={() => setArtifactsPanelOpen(!artifactsPanelOpen)}
+      />
+      <UpdateBanner />
     </AppShell>
   );
 }

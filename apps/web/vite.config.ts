@@ -28,7 +28,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom'],
-          'markdown': ['react-markdown', 'remark-gfm', 'rehype-highlight'],
+          markdown: ['react-markdown', 'remark-gfm', 'rehype-highlight'],
         },
       },
     },
@@ -66,8 +66,33 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff,woff2}'],
+        // Heavy lazy-loaded chunks: cached on first use, NOT precached, so
+        // the install bundle stays slim on mobile networks.
+        globIgnores: [
+          '**/mermaid*',
+          '**/cytoscape*',
+          '**/architectureDiagram*',
+          '**/wardley*',
+          '**/katex*',
+        ],
+        maximumFileSizeToCacheInBytes: 1_500_000,
         navigateFallback: '/index.html',
+        // Auto-activate the new SW immediately so installed PWAs always get
+        // the latest bundle on next load. Without this, mobile users would
+        // sit on a stale cached version until they manually clear caches.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
+          // Lazy chunks: cache on first fetch
+          {
+            urlPattern: /\/assets\/(mermaid|cytoscape|architectureDiagram|wardley|katex)[^/]*\.js$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'lazy-chunks-cache',
+              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
           {
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\/.*/i,
             handler: 'CacheFirst',

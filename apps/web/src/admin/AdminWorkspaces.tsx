@@ -26,10 +26,23 @@ const SOURCE_TYPES: { id: PaneSourceType; label: string; hint: string }[] = [
 
 export function AdminWorkspaces() {
   const workspaces = useLiveQuery(() => db.workspaces.orderBy('sortOrder').toArray()) ?? [];
-  const apps = useLiveQuery(() => db.apps.orderBy('name').toArray()) ?? [];
+  const apps =
+    useLiveQuery(async () => {
+      const arr = await db.apps.toArray();
+      return arr.slice().sort((a, b) => a.name.localeCompare(b.name));
+    }) ?? [];
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const active = workspaces.find((w) => w.id === activeId) ?? workspaces[0] ?? null;
+
+  if (workspaces.length === 0) {
+    return (
+      <div className="text-sm text-muted-fg/60 text-center py-12">
+        <p>Inizializzazione workspaces in corso…</p>
+        <p className="text-xs mt-2">Se questo messaggio resta visibile, ricarica la pagina.</p>
+      </div>
+    );
+  }
 
   const updateActive = async (patch: Partial<WorkspaceConfig>): Promise<void> => {
     if (!active) return;

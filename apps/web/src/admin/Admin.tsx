@@ -7,6 +7,7 @@ import { AdminSettings } from './AdminSettings';
 import { AdminApps } from './AdminApps';
 import { AdminWorkspaces } from './AdminWorkspaces';
 import { AdminMaintenance } from './AdminMaintenance';
+import { AdminErrorBoundary } from './ErrorBoundary';
 import { seedIfEmpty } from '@/lib/seed';
 
 interface AdminProps {
@@ -28,20 +29,27 @@ export function Admin({ onClose }: AdminProps) {
   return (
     <AdminShell onLogout={() => void logout()} onClose={onClose}>
       {(tab) => {
-        switch (tab) {
-          case 'voices':
-            return <AdminVoices />;
-          case 'settings':
-            return <AdminSettings />;
-          case 'apps':
-            return <AdminApps />;
-          case 'workspaces':
-            return <AdminWorkspaces />;
-          case 'maintenance':
-            return <AdminMaintenance />;
-          default:
-            return null;
-        }
+        const page = (() => {
+          switch (tab) {
+            case 'voices':
+              return <AdminVoices />;
+            case 'settings':
+              return <AdminSettings />;
+            case 'apps':
+              return <AdminApps />;
+            case 'workspaces':
+              return <AdminWorkspaces />;
+            case 'maintenance':
+              return <AdminMaintenance />;
+            default:
+              return null;
+          }
+        })();
+        return (
+          <AdminErrorBoundary key={tab} label={tab}>
+            {page}
+          </AdminErrorBoundary>
+        );
       }}
     </AdminShell>
   );
