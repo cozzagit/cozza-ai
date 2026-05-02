@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { fetchAdminInfo, fetchVoicePreview, type AdminInfo } from '@/lib/admin-api';
 import { StreamingAudioPlayer } from '@/lib/audio';
 import { useSettingsStore } from '@/stores/settings';
+import { getDebugLog, subscribeDebugLog, clearDebugLog, type DebugEntry } from '@/lib/debug-log';
 
 export function AdminMaintenance() {
   const [info, setInfo] = useState<AdminInfo | null>(null);
@@ -201,6 +202,8 @@ export function AdminMaintenance() {
         />
       </section>
 
+      <DebugLogPanel />
+
       <section className="rounded-xl glass-surface p-4 space-y-2">
         <h3 className="text-sm font-semibold">Diagnostica device</h3>
         <dl className="grid grid-cols-2 gap-y-1 text-xs">
@@ -228,6 +231,86 @@ export function AdminMaintenance() {
         </dl>
       </section>
     </div>
+  );
+}
+
+function DebugLogPanel() {
+  const [entries, setEntries] = useState<DebugEntry[]>(() => getDebugLog());
+
+  useEffect(() => {
+    const unsub = subscribeDebugLog(() => setEntries(getDebugLog()));
+    setEntries(getDebugLog());
+    return () => {
+      unsub();
+    };
+  }, []);
+
+  const copyAll = async (): Promise<void> => {
+    const text = entries
+      .map(
+        (e) =>
+          `[${new Date(e.ts).toLocaleTimeString()}] ${e.level.toUpperCase()} ${e.scope}: ${e.message}` +
+          (e.data ? ` ${JSON.stringify(e.data)}` : ''),
+      )
+      .join('\n');
+    await navigator.clipboard.writeText(text);
+  };
+
+  return (
+    <section className="rounded-xl glass-surface p-4 space-y-2">
+      <header className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold">Log eventi runtime</h3>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void copyAll()}
+            disabled={entries.length === 0}
+            className="text-xs rounded-md px-2 py-1 bg-white/5 hover:bg-white/10 disabled:opacity-40"
+          >
+            Copia
+          </button>
+          <button
+            type="button"
+            onClick={() => clearDebugLog()}
+            disabled={entries.length === 0}
+            className="text-xs rounded-md px-2 py-1 bg-white/5 hover:bg-white/10 disabled:opacity-40"
+          >
+            Pulisci
+          </button>
+        </div>
+      </header>
+      {entries.length === 0 ? (
+        <p className="text-xs text-muted-fg/60 py-3">
+          Nessun evento. Quando interagisci con la chat, qui appariranno gli ultimi {80} eventi
+          (chat send, tts speak, audio unlock, errori).
+        </p>
+      ) : (
+        <ul className="text-[11px] font-mono max-h-[280px] overflow-y-auto space-y-0.5 bg-oled-100/60 rounded-md p-2">
+          {entries
+            .slice()
+            .reverse()
+            .map((e, i) => (
+              <li
+                key={`${e.ts}-${i}`}
+                className={
+                  e.level === 'error'
+                    ? 'text-red-300'
+                    : e.level === 'warn'
+                      ? 'text-amber-300'
+                      : 'text-muted-fg/80'
+                }
+              >
+                <span className="text-muted-fg/50 mr-1">{new Date(e.ts).toLocaleTimeString()}</span>
+                <span className="text-accent/70 mr-1">{e.scope}</span>
+                {e.message}
+                {e.data ? (
+                  <span className="text-muted-fg/40 ml-1">{JSON.stringify(e.data)}</span>
+                ) : null}
+              </li>
+            ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

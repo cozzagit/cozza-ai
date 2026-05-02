@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { fetchTts } from '@/lib/api';
 import { StreamingAudioPlayer } from '@/lib/audio';
+import { log } from '@/lib/debug-log';
 
 interface UseTtsOptions {
   voiceId: string;
@@ -44,13 +45,15 @@ export function useTts({ voiceId, enabled }: UseTtsOptions) {
         return;
       }
       playingRef.current = true;
+      log.info('tts.speak', 'fetch', { voiceId: vid.slice(0, 8), len: next.length });
       try {
         const res = await fetchTts({ text: next, voiceId: vid, modelId: 'eleven_flash_v2_5' });
         // playStream resolves WHEN PLAYBACK STARTS, not when it ends.
         // We rely on the `ended` event (via onEnded below) to call drain again.
         await player.playStream(res);
       } catch (e) {
-        console.warn('[tts] sentence failed, skipping', e);
+        const msg = e instanceof Error ? e.message : 'unknown';
+        log.error('tts.speak', 'failed (skip)', { msg });
         playingRef.current = false;
         // try the next one immediately
         void drain();

@@ -4,6 +4,7 @@ import { streamChat, ApiError } from '@/lib/api';
 import { db, type MessageRecord, type Conversation } from '@/lib/db';
 import { PROVIDER_BY_MODEL, type ChatModel, type ChatMessage } from '@cozza/shared';
 import { useSettingsStore } from '@/stores/settings';
+import { log } from '@/lib/debug-log';
 
 export type ChatStatus = 'idle' | 'streaming' | 'error';
 
@@ -26,6 +27,7 @@ export function useChat(opts: UseChatOptions) {
   const [status, setStatus] = useState<ChatStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [streamingText, setStreamingText] = useState('');
+  const [lastUserText, setLastUserText] = useState('');
   const abortRef = useRef<AbortController | null>(null);
 
   // Keep latest callbacks in refs so `send` identity stays stable
@@ -41,62 +43,76 @@ export function useChat(opts: UseChatOptions) {
       if (!userText.trim()) return;
       setError(null);
       setStreamingText('');
-
-      const provider = PROVIDER_BY_MODEL[model];
-      const now = Date.now();
-      const assistantId = uuidv7();
-      const userId = uuidv7();
+      setLastUserText(userText);
+      log.info('chat.send', 'start', { model, len: userText.length });
 
       let conversationId = optConvId;
-      if (!conversationId) {
-        conversationId = uuidv7();
-        const conv: Conversation = {
-          id: conversationId,
-          title: userText.slice(0, 60),
-          provider,
-          model,
-          createdAt: now,
-          lastMessageAt: now,
-          messageCount: 0,
-        };
-        await db.conversations.put(conv);
-        createdRef.current?.(conversationId);
-      }
-
-      const userMsg: MessageRecord = {
-        id: userId,
-        conversationId,
-        role: 'user',
-        content: userText,
-        createdAt: now,
-      };
-      await db.messages.add(userMsg);
-
-      const history = await db.messages
-        .where('[conversationId+createdAt]')
-        .between([conversationId, 0], [conversationId, Date.now() + 1])
-        .toArray();
-      const persona = useSettingsStore.getState().personaPrompt.trim();
-      const messages: ChatMessage[] = [];
-      if (persona) messages.push({ role: 'system', content: persona });
-      for (const m of history) messages.push({ role: m.role, content: m.content });
-
-      await db.conversations.update(conversationId, {
-        lastMessageAt: now,
-        messageCount: history.length,
-      });
-
-      setStatus('streaming');
+      let buf = '';
       const ctrl = new AbortController();
       abortRef.current = ctrl;
+      const assistantId = uuidv7();
 
-      let buf = '';
-      let lastFlushIdx = 0;
-      let inputTokens = 0;
-      let outputTokens = 0;
-
-      const temperature = useSettingsStore.getState().temperature;
       try {
+        const provider = PROVIDER_BY_MODEL[model];
+        if (!provider) throw new Error(`unknown model ${model}`);
+
+        const now = Date.now();
+        const userId = uuidv7();
+
+        if (!conversationId) {
+          conversationId = uuidv7();
+          const conv: Conversation = {
+            id: conversationId,
+            title: userText.slice(0, 60),
+            provider,
+            model,
+            createdAt: now,
+            lastMessageAt: now,
+            messageCount: 0,
+          };
+          await db.conversations.put(conv);
+          createdRef.current?.(conversationId);
+          log.info('chat.send', 'new conversation', { id: conversationId.slice(0, 8) });
+        }
+
+        const userMsg: MessageRecord = {
+          id: userId,
+          conversationId,
+          role: 'user',
+          content: userText,
+          createdAt: now,
+        };
+        await db.messages.add(userMsg);
+
+        const history = await db.messages
+          .where('[conversationId+createdAt]')
+          .between([conversationId, 0], [conversationId, Date.now() + 1])
+          .toArray();
+
+        // Defensive: settings values may be undefined right after a migration.
+        const settings = useSettingsStore.getState();
+        const persona = (settings.personaPrompt ?? '').trim();
+        const temperature =
+          typeof settings.temperature === 'number' && Number.isFinite(settings.temperature)
+            ? settings.temperature
+            : 0.7;
+
+        const messages: ChatMessage[] = [];
+        if (persona) messages.push({ role: 'system', content: persona });
+        for (const m of history) messages.push({ role: m.role, content: m.content });
+
+        await db.conversations.update(conversationId, {
+          lastMessageAt: now,
+          messageCount: history.length,
+        });
+
+        setStatus('streaming');
+        log.info('chat.stream', 'open', { provider, msgCount: messages.length });
+
+        let lastFlushIdx = 0;
+        let inputTokens = 0;
+        let outputTokens = 0;
+
         const stream = streamChat({ provider, model, messages, temperature }, ctrl.signal);
         for await (const evt of stream) {
           if (evt.type === 'delta') {
@@ -120,6 +136,10 @@ export function useChat(opts: UseChatOptions) {
         const tail = buf.slice(lastFlushIdx).trim();
         if (tail.length > 0) sentenceRef.current?.(tail);
 
+        if (!buf.trim()) {
+          throw new Error('Risposta vuota dal modello');
+        }
+
         const assistantMsg: MessageRecord = {
           id: assistantId,
           conversationId,
@@ -138,9 +158,11 @@ export function useChat(opts: UseChatOptions) {
         doneRef.current?.(buf);
         setStatus('idle');
         setStreamingText('');
+        log.info('chat.send', 'done', { tokens: { inputTokens, outputTokens } });
       } catch (e) {
         if (ctrl.signal.aborted) {
-          if (buf.length > 0) {
+          log.warn('chat.send', 'aborted by user');
+          if (conversationId && buf.length > 0) {
             await db.messages.add({
               id: assistantId,
               conversationId,
@@ -154,6 +176,7 @@ export function useChat(opts: UseChatOptions) {
           return;
         }
         const msg = e instanceof Error ? e.message : 'errore sconosciuto';
+        log.error('chat.send', 'failed', { msg });
         setError(msg);
         setStatus('error');
       } finally {
@@ -166,8 +189,15 @@ export function useChat(opts: UseChatOptions) {
   const cancel = useCallback(() => {
     if (abortRef.current && !abortRef.current.signal.aborted) {
       abortRef.current.abort();
+      log.info('chat.send', 'cancel requested');
     }
   }, []);
 
-  return { send, cancel, status, error, streamingText };
+  const retry = useCallback(async (): Promise<void> => {
+    if (!lastUserText.trim()) return;
+    log.info('chat.send', 'retry');
+    await send(lastUserText);
+  }, [lastUserText, send]);
+
+  return { send, cancel, retry, status, error, streamingText, lastUserText };
 }

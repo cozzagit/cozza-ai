@@ -51,7 +51,7 @@ export default function App() {
   });
 
   // Chat
-  const { send, cancel, status, error, streamingText } = useChat({
+  const { send, cancel, retry, status, error, streamingText } = useChat({
     conversationId,
     model: defaultModel,
     onAssistantSentence: (sentence) => {
@@ -269,8 +269,19 @@ export default function App() {
       }
     >
       {error && (
-        <div className="px-4 py-2 mx-3 my-2 max-w-sweet-lg sm:mx-auto w-auto rounded-md text-sm text-red-300 bg-red-950/40 border border-red-900/40">
-          <strong className="font-semibold">Errore:</strong> {error}
+        <div className="px-4 py-3 mx-3 my-2 max-w-sweet-lg sm:mx-auto w-auto rounded-md text-sm text-red-300 bg-red-950/40 border border-red-900/40 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+          <span>
+            <strong className="font-semibold">Errore:</strong> {error}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              void retry();
+            }}
+            className="focus-accent shrink-0 rounded-md px-3 py-1 text-xs bg-red-900/50 hover:bg-red-900/80 text-red-100 border border-red-800/40"
+          >
+            ↻ Riprova
+          </button>
         </div>
       )}
       <MessageList
