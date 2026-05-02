@@ -61,6 +61,12 @@ wrangler.toml.local
 TODO.local.md
 NOTES.local.md
 
+# Local test artifacts
+*.mp3
+*.wav
+*.webm
+tts-test.*
+
 # Playwright
 playwright-report/
 test-results/
