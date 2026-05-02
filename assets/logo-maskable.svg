@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="cozza-ai">
+  <!-- Maskable variant: full-bleed background, glyph scaled INSIDE the safe area
+       (inner 80% = 410x410 centered) so Android adaptive icons don't crop the C. -->
+  <defs>
+    <radialGradient id="bgGlowM" cx="50%" cy="50%" r="62%">
+      <stop offset="0%" stop-color="#0A1F23" stop-opacity="1" />
+      <stop offset="55%" stop-color="#020608" stop-opacity="1" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="1" />
+    </radialGradient>
+    <radialGradient id="coreGlowM" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="1" />
+      <stop offset="20%" stop-color="#7CF0FF" stop-opacity="0.95" />
+      <stop offset="55%" stop-color="#00E5FF" stop-opacity="0.6" />
+      <stop offset="100%" stop-color="#00E5FF" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="visorGradM" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00B8D4" />
+      <stop offset="50%" stop-color="#00E5FF" />
+      <stop offset="100%" stop-color="#7CF0FF" />
+    </linearGradient>
+    <filter id="softBlurM" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" />
+    </filter>
+    <filter id="neonGlowM" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Full-bleed background -->
+  <rect width="512" height="512" fill="#000000" />
+  <rect width="512" height="512" fill="url(#bgGlowM)" />
+
+  <!-- Glyph scaled to fit inside safe zone (centered, 80%) -->
+  <g transform="translate(256 256) scale(0.8) translate(-256 -256)">
+    <circle
+      cx="256"
+      cy="256"
+      r="208"
+      fill="none"
+      stroke="#00E5FF"
+      stroke-width="1.5"
+      stroke-opacity="0.18"
+      stroke-dasharray="2 8"
+    />
+    <g filter="url(#neonGlowM)">
+      <path
+        d="M 360 144 A 144 144 0 1 0 360 368"
+        fill="none"
+        stroke="url(#visorGradM)"
+        stroke-width="34"
+        stroke-linecap="round"
+      />
+    </g>
+    <path
+      d="M 340 176 A 112 112 0 1 0 340 336"
+      fill="none"
+      stroke="#7CF0FF"
+      stroke-width="3"
+      stroke-linecap="round"
+      stroke-opacity="0.55"
+    />
+    <circle cx="256" cy="256" r="80" fill="url(#coreGlowM)" filter="url(#softBlurM)" />
+    <circle cx="256" cy="256" r="22" fill="#00E5FF" />
+    <circle cx="256" cy="256" r="14" fill="#7CF0FF" />
+    <circle cx="256" cy="256" r="7" fill="#FFFFFF" />
+    <g stroke="#00E5FF" stroke-width="1.5" stroke-linecap="round" opacity="0.55">
+      <line x1="278" y1="256" x2="340" y2="256" />
+      <line x1="234" y1="256" x2="172" y2="256" />
+    </g>
+    <g fill="#00E5FF">
+      <circle cx="160" cy="200" r="3" opacity="0.9" />
+      <circle cx="148" cy="256" r="4" opacity="1" />
+      <circle cx="160" cy="312" r="3" opacity="0.9" />
+    </g>
+  </g>
+</svg>

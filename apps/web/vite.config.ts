@@ -37,11 +37,11 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icons/*.png'],
+      includeAssets: ['icons/*.png', 'favicon.png', 'icons/*.svg'],
       manifest: {
-        name: 'cozza-ai',
+        name: 'cozza-ai · cockpit',
         short_name: 'cozza-ai',
-        description: 'Personal cockpit AI for Viture Beast XR',
+        description: 'Personal cockpit AI for Viture Beast XR — chat & voice',
         theme_color: '#000000',
         background_color: '#000000',
         display: 'standalone',
@@ -49,18 +49,29 @@ export default defineConfig({
         start_url: '/',
         scope: '/',
         lang: 'it',
+        categories: ['productivity', 'utilities'],
         icons: [
+          { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
           {
-            src: '/icons/icon-192.png',
+            src: '/icons/icon-192-maskable.png',
             sizes: '192x192',
             type: 'image/png',
-            purpose: 'any maskable',
+            purpose: 'maskable',
           },
           {
-            src: '/icons/icon-512.png',
+            src: '/icons/icon-512-maskable.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable',
+            purpose: 'maskable',
+          },
+        ],
+        shortcuts: [
+          {
+            name: 'Admin',
+            short_name: 'Admin',
+            description: 'Pannello di controllo',
+            url: '/admin',
           },
         ],
       },
