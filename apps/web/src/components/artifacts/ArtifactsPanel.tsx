@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { Artifact } from '@/lib/artifacts';
 import { MermaidView } from './MermaidView';
+import { ImagePromptView } from './ImagePromptView';
 
 interface ArtifactsPanelProps {
   artifacts: Artifact[];
@@ -80,7 +81,8 @@ export function ArtifactsPanel({ artifacts, open, onToggle }: ArtifactsPanelProp
                 Quando l&apos;AI genera immagini, grafici Mermaid, SVG o HTML, appariranno qui.
               </p>
               <p className="text-xs mt-3 text-muted-fg/50">
-                Prova: <em>&quot;disegnami un diagramma di flusso del login con mermaid&quot;</em>
+                Prova: <em>&quot;mostrami una scena di un cockpit XR futuristico&quot;</em> oppure{' '}
+                <em>&quot;diagramma OAuth&quot;</em>
               </p>
             </div>
           ) : (
@@ -118,6 +120,8 @@ function ArtifactView({ artifact }: { artifact: Artifact }) {
           )}
         </figure>
       );
+    case 'image-prompt':
+      return <ImagePromptView prompt={artifact.payload} id={artifact.id} />;
     case 'mermaid':
       return (
         <div className="rounded-lg bg-oled-100 p-3 border border-white/5">

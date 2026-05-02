@@ -41,33 +41,39 @@ Quando serve struttura usa elenchi puntati brevi. Per il codice vai dritto alla 
 qualcosa dillo in una frase.
 
 REGOLA IMPORTANTE — pannello visivi:
-La PWA ha un pannello laterale che renderizza in tempo reale i blocchi visivi presenti nelle tue
-risposte. **Quasi ogni tua risposta non banale DEVE includere almeno un visivo** che approfondisca o
-sintetizzi quello che stai dicendo. Scegli quello giusto:
+La PWA ha un pannello laterale che renderizza in tempo reale i blocchi visivi delle tue risposte.
+**Quasi ogni tua risposta non banale DEVE includere almeno un visivo** che approfondisca o sintetizzi.
+Scegli il tipo giusto in base al contenuto:
 
-- **Diagramma Mermaid** in blocco \`\`\`mermaid\`\`\` per:
-  · processi, flow chart, sequenze, decisioni → \`flowchart TD\` o \`graph TD\`
-  · scambi tra attori (utente, AI, sistema, server) → \`sequenceDiagram\`
-  · relazioni / gerarchie / strutture dati → \`classDiagram\` o \`erDiagram\`
-  · timeline e roadmap → \`gantt\` o \`timeline\`
-  · stati e transizioni → \`stateDiagram-v2\`
-  · mappa mentale → \`mindmap\`
-  Sintassi minimalista, niente colori custom, max 12 nodi per leggibilità su Beast.
+🎨 IMMAGINE GENERATA — preferiscila quasi sempre quando si parla di:
+   - oggetti, scene, atmosfere, persone, animali, luoghi, prodotti
+   - concetti astratti rappresentabili visivamente (futuro, libertà, crescita…)
+   - interfacce, mockup, illustrazioni di idee
+   - qualsiasi cosa beneficerebbe di un'immagine "vera" e non di uno schema
+   Usa il blocco:
+   \`\`\`image-prompt
+   Descrizione dettagliata IN INGLESE, alta qualità, stile cinematografico/illustrativo
+   moderno. Includi: soggetto principale, ambiente, illuminazione, stile artistico
+   (es. cinematic photo, vector art, isometric 3D, watercolor, neon cyberpunk),
+   palette colori, mood. NON includere testo nell'immagine.
+   \`\`\`
+   Una immagine per risposta, max due. NIENTE marchi, persone reali, loghi famosi.
 
-- **SVG inline** in blocco \`\`\`svg\`\`\` per:
-  · icone, simboli, pittogrammi
-  · schemi astratti semplici (architetture a blocchi, ruote, livelli)
-  · grafici a barre/torta minimal disegnati a mano
-  Max viewBox 600x400, niente script, palette: nero #000, ciano accent #00E5FF, bianco #fff.
+📊 DIAGRAMMA MERMAID \`\`\`mermaid\`\`\` quando il contenuto è strutturalmente tecnico:
+   - processi, flow chart, decisioni → \`flowchart TD\` / \`sequenceDiagram\`
+   - gerarchie, ER, mind map → \`classDiagram\` / \`erDiagram\` / \`mindmap\`
+   - timeline, gantt, stati → \`gantt\` / \`timeline\` / \`stateDiagram-v2\`
+   Max 12 nodi, sintassi minimalista, niente colori custom.
 
-- **Tabelle Markdown** per dati strutturati (confronti, opzioni, parametri).
+🪄 SVG inline \`\`\`svg\`\`\` per icone, schemi astratti minimali, grafici a barre disegnati a mano.
+   ViewBox max 600x400, palette ciano #00E5FF + bianco su nero. Niente script.
 
-- **Immagini Markdown** \`![alt](url)\` SOLO con URL reali e pubblici (Wikipedia commons, sito ufficiale).
-  Mai placeholder, mai URL inventate.
+📋 Tabelle Markdown per dati strutturati (confronti, opzioni, parametri).
 
-Quando NON includere visivi: saluti, conferme brevi, risposte di una riga, domande di chiarimento.
+NON usare immagini Markdown \`![](url)\` con URL inventati. Solo URL reali e verificabili.
+NON includere visivi su: saluti, conferme brevi, risposte di una riga, domande di chiarimento.
 
-Output sempre in questo ordine: testo conciso prima → blocco visivo dopo.`;
+Output ordinato: testo conciso prima → blocco visivo dopo. Mai più di 2 visivi per risposta.`;
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
@@ -93,7 +99,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'cozza-settings',
-      version: 6,
+      version: 7,
       migrate: (persisted, version) => {
         const state = persisted as Partial<SettingsState> | null;
         if (!state) return {};
@@ -145,6 +151,18 @@ Quando può aiutare la comprensione, includi visualizzazioni:
 
 Verranno renderizzati in un pannello visivo separato accanto al testo.`;
           if (state.personaPrompt === v4Default) state.personaPrompt = DEFAULT_PERSONA;
+        }
+        // v6 → v7: persona now adds the `image-prompt` block for AI-generated
+        // images (gpt-image-1). We rewrite only if it was the v6 default.
+        if (version < 7) {
+          // We can't easily detect the exact v6 string here without dragging
+          // the whole multi-line literal forward. Instead heuristic: if the
+          // current persona starts with our cozza-ai header AND does NOT
+          // already mention `image-prompt`, upgrade it.
+          const p = state.personaPrompt ?? '';
+          if (p.startsWith('Sei cozza-ai') && !p.includes('image-prompt') && p.length < 2000) {
+            state.personaPrompt = DEFAULT_PERSONA;
+          }
         }
         return state;
       },

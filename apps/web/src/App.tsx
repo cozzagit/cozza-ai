@@ -8,6 +8,7 @@ import { VoiceButton } from './components/voice/VoiceButton';
 import { ArtifactsPanel } from './components/artifacts/ArtifactsPanel';
 import { UpdateBanner } from './components/layout/UpdateBanner';
 import { AudioUnlockBanner } from './components/layout/AudioUnlockBanner';
+import { GlobalAudioControl } from './components/layout/GlobalAudioControl';
 import { StreamingAudioPlayer } from './lib/audio';
 import { useChat } from './hooks/useChat';
 import { useConversations } from './hooks/useConversations';
@@ -328,6 +329,13 @@ export default function App() {
       />
       <UpdateBanner />
       <AudioUnlockBanner />
+      <GlobalAudioControl
+        isPlaying={ttsPlaying}
+        onStop={() => {
+          stopTts();
+          setReplayingMessageId(null);
+        }}
+      />
     </AppShell>
   );
 }

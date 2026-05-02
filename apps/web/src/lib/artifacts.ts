@@ -13,7 +13,7 @@
  * conversation alongside the chat text.
  */
 
-export type ArtifactKind = 'image' | 'mermaid' | 'svg' | 'html' | 'chart' | 'link';
+export type ArtifactKind = 'image' | 'image-prompt' | 'mermaid' | 'svg' | 'html' | 'chart' | 'link';
 
 export interface Artifact {
   /** stable id derived from messageId + index */
@@ -74,6 +74,9 @@ export function extractArtifacts(messageId: string, content: string): Artifact[]
     else if (ll === 'svg') push('svg', body);
     else if (ll === 'html') push('html', body);
     else if (ll === 'chart' || ll === 'chartjs') push('chart', body);
+    else if (ll === 'image-prompt' || ll === 'imageprompt' || ll === 'image_prompt') {
+      push('image-prompt', body);
+    }
   }
   // Inline SVG outside of fences
   const codeFenced = new Set(

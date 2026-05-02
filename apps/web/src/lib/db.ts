@@ -28,6 +28,19 @@ export interface AudioBlobRecord {
   createdAt: number;
 }
 
+/**
+ * Cached generated image. `key` is a SHA-1 hash of the prompt + size + quality
+ * so the same prompt is never re-generated (saves $0.04 + 10s every time).
+ */
+export interface ImageBlobRecord {
+  key: string;
+  blob: Blob;
+  prompt: string;
+  size: string;
+  quality: string;
+  createdAt: number;
+}
+
 /** Tile pinned in launcher (Netflix, DAZN, Claude.ai, vscode.dev, …) */
 export interface AppTile {
   id: string;
@@ -77,6 +90,7 @@ class CozzaDb extends Dexie {
   audioBlobs!: Table<AudioBlobRecord, string>;
   apps!: Table<AppTile, string>;
   workspaces!: Table<WorkspaceConfig, string>;
+  imageBlobs!: Table<ImageBlobRecord, string>;
 
   constructor() {
     super('cozza-ai');
@@ -92,7 +106,28 @@ class CozzaDb extends Dexie {
       apps: 'id, category, sortOrder, pinned',
       workspaces: 'id, sortOrder',
     });
+    this.version(3).stores({
+      conversations: 'id, lastMessageAt, provider',
+      messages: 'id, conversationId, createdAt, [conversationId+createdAt]',
+      audioBlobs: 'key, createdAt',
+      apps: 'id, category, sortOrder, pinned',
+      workspaces: 'id, sortOrder',
+      imageBlobs: 'key, createdAt',
+    });
   }
+}
+
+/** Stable key for caching: SHA-1 of prompt|size|quality. */
+export async function imageCacheKey(
+  prompt: string,
+  size: string,
+  quality: string,
+): Promise<string> {
+  const data = new TextEncoder().encode(`${prompt.trim()}|${size}|${quality}`);
+  const digest = await crypto.subtle.digest('SHA-1', data);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 export const db = new CozzaDb();

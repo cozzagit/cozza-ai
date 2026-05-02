@@ -98,3 +98,27 @@ export async function healthz(): Promise<{ status: string; commit?: string }> {
   if (!res.ok) throw new ApiError('healthz failed', res.status);
   return (await res.json()) as { status: string; commit?: string };
 }
+
+export interface ImageGenRequest {
+  prompt: string;
+  size?: '1024x1024' | '1024x1536' | '1536x1024';
+  quality?: 'low' | 'medium' | 'high';
+}
+
+/**
+ * Generate an image via OpenAI gpt-image-1 (proxied by the backend).
+ * Returns a Blob (image/png) the caller can turn into an objectURL.
+ */
+export async function generateImage(req: ImageGenRequest, signal?: AbortSignal): Promise<Blob> {
+  const res = await fetch(`${API_BASE}/api/image/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'image/png' },
+    body: JSON.stringify(req),
+    ...(signal ? { signal } : {}),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new ApiError(text || `HTTP ${res.status}`, res.status);
+  }
+  return res.blob();
+}
