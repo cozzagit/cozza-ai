@@ -11,6 +11,20 @@ const ConfigSchema = z.object({
   RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(30),
   COMMIT_SHA: z.string().default('local'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  // Admin panel
+  ADMIN_PIN: z
+    .string()
+    .regex(/^\d{6}$/, 'ADMIN_PIN must be exactly 6 digits')
+    .default('412958'),
+  ADMIN_JWT_SECRET: z
+    .string()
+    .min(32, 'ADMIN_JWT_SECRET must be at least 32 chars')
+    .default('change-me-please-this-must-be-32-chars-or-longer-x'),
+  ADMIN_TOKEN_TTL_SECONDS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(60 * 60 * 24),
 });
 
 const parsed = ConfigSchema.safeParse(process.env);
@@ -34,6 +48,10 @@ export const config = parsed.success
       RATE_LIMIT_PER_MIN: 30,
       COMMIT_SHA: process.env.COMMIT_SHA ?? 'local',
       NODE_ENV: (process.env.NODE_ENV as 'development' | 'production' | 'test') ?? 'development',
+      ADMIN_PIN: process.env.ADMIN_PIN ?? '412958',
+      ADMIN_JWT_SECRET:
+        process.env.ADMIN_JWT_SECRET ?? 'change-me-please-this-must-be-32-chars-or-longer-x',
+      ADMIN_TOKEN_TTL_SECONDS: 60 * 60 * 24,
     };
 
 export type AppConfig = typeof config;

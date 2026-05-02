@@ -3,6 +3,7 @@ import { v7 as uuidv7 } from 'uuid';
 import { streamChat, ApiError } from '@/lib/api';
 import { db, type MessageRecord, type Conversation } from '@/lib/db';
 import { PROVIDER_BY_MODEL, type ChatModel, type ChatMessage } from '@cozza/shared';
+import { useSettingsStore } from '@/stores/settings';
 
 export type ChatStatus = 'idle' | 'streaming' | 'error';
 
@@ -75,10 +76,10 @@ export function useChat(opts: UseChatOptions) {
         .where('[conversationId+createdAt]')
         .between([conversationId, 0], [conversationId, Date.now() + 1])
         .toArray();
-      const messages: ChatMessage[] = history.map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
+      const persona = useSettingsStore.getState().personaPrompt.trim();
+      const messages: ChatMessage[] = [];
+      if (persona) messages.push({ role: 'system', content: persona });
+      for (const m of history) messages.push({ role: m.role, content: m.content });
 
       await db.conversations.update(conversationId, {
         lastMessageAt: now,
@@ -94,11 +95,9 @@ export function useChat(opts: UseChatOptions) {
       let inputTokens = 0;
       let outputTokens = 0;
 
+      const temperature = useSettingsStore.getState().temperature;
       try {
-        const stream = streamChat(
-          { provider, model, messages },
-          ctrl.signal,
-        );
+        const stream = streamChat({ provider, model, messages, temperature }, ctrl.signal);
         for await (const evt of stream) {
           if (evt.type === 'delta') {
             buf += evt.text;
@@ -131,10 +130,7 @@ export function useChat(opts: UseChatOptions) {
           outputTokens,
         };
         await db.messages.add(assistantMsg);
-        const newCount = await db.messages
-          .where('conversationId')
-          .equals(conversationId)
-          .count();
+        const newCount = await db.messages.where('conversationId').equals(conversationId).count();
         await db.conversations.update(conversationId, {
           lastMessageAt: Date.now(),
           messageCount: newCount,

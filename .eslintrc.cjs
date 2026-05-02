@@ -43,6 +43,9 @@ module.exports = {
       rules: {
         'react/react-in-jsx-scope': 'off',
         'react/prop-types': 'off',
+        // Our domain-level `role` prop on ChatBubble/Sidebar collides with the
+        // jsx-a11y aria-role rule. We don't expose ARIA roles through that prop.
+        'jsx-a11y/aria-role': 'off',
       },
     },
   ],

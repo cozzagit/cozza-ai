@@ -7,6 +7,7 @@ import { rateLimitMiddleware } from '@/middleware/rate-limit';
 import { chatRoutes } from '@/routes/chat';
 import { ttsRoutes } from '@/routes/tts';
 import { healthRoutes } from '@/routes/health';
+import { adminRoutes } from '@/routes/admin/index.js';
 
 export function buildApp(): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
@@ -25,10 +26,9 @@ export function buildApp(): Hono<AppEnv> {
   app.route('/api/chat', chatRoutes);
   app.route('/api/tts', ttsRoutes);
   app.route('/api/healthz', healthRoutes);
+  app.route('/api/admin', adminRoutes);
 
-  app.notFound((c) =>
-    c.json({ error: { code: 'NOT_FOUND', message: 'route not found' } }, 404),
-  );
+  app.notFound((c) => c.json({ error: { code: 'NOT_FOUND', message: 'route not found' } }, 404));
 
   app.onError((err, c) => {
     console.error(JSON.stringify({ event: 'error.unhandled', message: err.message }));

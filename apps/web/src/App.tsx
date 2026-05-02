@@ -13,8 +13,6 @@ import { useVoiceInput } from './hooks/useVoiceInput';
 import { useSettingsStore } from './stores/settings';
 import { useWorkspaceStore } from './stores/workspace';
 
-const VOICE_ID = (import.meta.env.VITE_ELEVENLABS_VOICE_ID as string | undefined) ?? '';
-
 export default function App() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -25,6 +23,7 @@ export default function App() {
   const setDefaultModel = useSettingsStore((s) => s.setDefaultModel);
   const ttsAutoplay = useSettingsStore((s) => s.ttsAutoplay);
   const setTtsAutoplay = useSettingsStore((s) => s.setTtsAutoplay);
+  const voiceId = useSettingsStore((s) => s.voiceId);
 
   // V1 hook predisposto: subscribe (no-op) garantisce che lo store sia montato.
   // UI MVP non legge `active`. Esposto su window.__cozza per debug.
@@ -39,8 +38,8 @@ export default function App() {
 
   // TTS
   const { speak, stop: stopTts } = useTts({
-    voiceId: VOICE_ID,
-    enabled: ttsAutoplay && Boolean(VOICE_ID),
+    voiceId,
+    enabled: ttsAutoplay && Boolean(voiceId),
   });
 
   // Chat
@@ -56,7 +55,14 @@ export default function App() {
   });
 
   // Voice → push-to-talk
-  const { state: voiceState, interim, start, stop } = useVoiceInput({
+  const sttLang = useSettingsStore((s) => s.sttLang);
+  const {
+    state: voiceState,
+    interim,
+    start,
+    stop,
+  } = useVoiceInput({
+    lang: sttLang,
     onFinalResult: (transcript) => {
       void send(transcript);
     },
@@ -110,17 +116,57 @@ export default function App() {
             aria-label="Apri/chiudi cronologia"
             className="focus-accent md:hidden rounded-md p-2 hover:bg-white/5"
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden>
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              aria-hidden
+            >
               <line x1="3" y1="6" x2="21" y2="6" />
               <line x1="3" y1="12" x2="21" y2="12" />
               <line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-2 h-2 rounded-full bg-accent shadow-[0_0_8px_rgba(0,229,255,0.8)]" aria-hidden />
+            <div
+              className="w-2 h-2 rounded-full bg-accent shadow-[0_0_8px_rgba(0,229,255,0.8)]"
+              aria-hidden
+            />
             <span className="font-mono text-sm tracking-wide truncate">cozza-ai</span>
           </div>
-          <ModelSelector value={defaultModel} onChange={setDefaultModel} disabled={isStreaming} />
+          <div className="flex items-center gap-2">
+            <ModelSelector value={defaultModel} onChange={setDefaultModel} disabled={isStreaming} />
+            <a
+              href="/admin"
+              onClick={(e) => {
+                e.preventDefault();
+                window.history.pushState({}, '', '/admin');
+                window.dispatchEvent(new PopStateEvent('popstate'));
+              }}
+              aria-label="Apri admin"
+              title="Admin"
+              className="focus-accent rounded-md p-2 text-muted-fg hover:text-white hover:bg-white/5"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </a>
+          </div>
         </div>
       }
       footer={
@@ -131,11 +177,7 @@ export default function App() {
             </div>
           )}
           <div className="flex items-center gap-3 px-3 py-3 max-w-sweet-lg mx-auto w-full">
-            <VoiceButton
-              state={voiceState}
-              onPressStart={start}
-              onPressEnd={stop}
-            />
+            <VoiceButton state={voiceState} onPressStart={start} onPressEnd={stop} />
             <div className="flex-1 min-w-0">
               <PromptInput
                 disabled={isStreaming}
@@ -170,11 +212,7 @@ export default function App() {
         </div>
       }
     >
-      <MessageList
-        messages={messages}
-        streamingText={streamingText}
-        isStreaming={isStreaming}
-      />
+      <MessageList messages={messages} streamingText={streamingText} isStreaming={isStreaming} />
     </AppShell>
   );
 }
