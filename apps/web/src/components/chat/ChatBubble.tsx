@@ -8,6 +8,7 @@ interface ChatBubbleProps {
   streaming?: boolean;
   onReplayAudio?: () => void;
   onCopy?: () => void;
+  onGenerateImage?: () => void;
   /** True when this specific bubble's audio is currently playing. Toggles button to "Stop". */
   isPlaying?: boolean;
 }
@@ -18,6 +19,7 @@ export function ChatBubble({
   streaming = false,
   onReplayAudio,
   onCopy,
+  onGenerateImage,
   isPlaying = false,
 }: ChatBubbleProps) {
   const isUser = role === 'user';
@@ -81,9 +83,9 @@ export function ChatBubble({
           </div>
         )}
 
-        {/* Action toolbar for assistant messages (visible on hover/focus) */}
-        {!isUser && !streaming && (onReplayAudio || onCopy) && (
-          <div className="mt-2 pt-2 border-t border-white/5 flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+        {/* Action toolbar for assistant messages (always visible — no longer hidden behind hover) */}
+        {!isUser && !streaming && (onReplayAudio || onCopy || onGenerateImage) && (
+          <div className="mt-2 pt-2 border-t border-white/5 flex items-center gap-1 flex-wrap">
             {onReplayAudio && (
               <button
                 type="button"
@@ -100,6 +102,18 @@ export function ChatBubble({
               >
                 <span aria-hidden>{isPlaying ? '⏹' : '🔊'}</span>
                 <span>{isPlaying ? 'Stop' : 'Audio'}</span>
+              </button>
+            )}
+            {onGenerateImage && (
+              <button
+                type="button"
+                onClick={onGenerateImage}
+                aria-label="Genera immagine"
+                title="Genera un'immagine basata su questo messaggio"
+                className="focus-accent text-xs rounded-md px-2 py-1 bg-white/5 hover:bg-white/10 inline-flex items-center gap-1"
+              >
+                <span aria-hidden>🎨</span>
+                <span>Immagine</span>
               </button>
             )}
             {onCopy && (

@@ -9,7 +9,10 @@ import { ArtifactsPanel } from './components/artifacts/ArtifactsPanel';
 import { UpdateBanner } from './components/layout/UpdateBanner';
 import { AudioUnlockBanner } from './components/layout/AudioUnlockBanner';
 import { GlobalAudioControl } from './components/layout/GlobalAudioControl';
+import { AppLauncher } from './components/layout/AppLauncher';
+import { ImageRequestDialog } from './components/chat/ImageRequestDialog';
 import { StreamingAudioPlayer } from './lib/audio';
+import { db } from './lib/db';
 import { useChat } from './hooks/useChat';
 import { useConversations } from './hooks/useConversations';
 import { useMessages } from './hooks/useMessages';
@@ -23,6 +26,10 @@ import type { MessageRecord } from './lib/db';
 export default function App() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [appLauncherOpen, setAppLauncherOpen] = useState(false);
+  const [imageDialog, setImageDialog] = useState<{ msg: MessageRecord; initial: string } | null>(
+    null,
+  );
   const [pendingPrompt, setPendingPrompt] = useState('');
 
   // Settings
@@ -166,6 +173,26 @@ export default function App() {
     void navigator.clipboard?.writeText(msg.content);
   };
 
+  const handleGenerateImage = (msg: MessageRecord): void => {
+    // Pre-fill with a high-quality English prompt suggestion based on the
+    // assistant's first sentence. The user can refine in the dialog.
+    const firstSentence = msg.content.replace(/```[\s\S]*?```/g, '').split(/[.!?]\s/)[0] ?? '';
+    const initial =
+      firstSentence.length > 10
+        ? `Cinematic illustration: ${firstSentence.trim()}. Style: photorealistic, dramatic lighting, ultra-detailed, 8k, neon cyan accents, deep black background.`
+        : 'Cinematic photo of a futuristic XR cockpit, neon cyan accents, deep black background, volumetric lighting, ultra-detailed, 8k';
+    setImageDialog({ msg, initial });
+  };
+
+  const generateImageForMessage = async (msg: MessageRecord, prompt: string): Promise<void> => {
+    // Append an `image-prompt` block to the assistant message in Dexie.
+    // The artifacts extractor will pick it up on the next render and
+    // ImagePromptView will fetch + cache the image automatically.
+    const block = `\n\n\`\`\`image-prompt\n${prompt.trim()}\n\`\`\`\n`;
+    const newContent = `${msg.content}${block}`;
+    await db.messages.update(msg.id, { content: newContent });
+  };
+
   return (
     <AppShell
       sidebar={
@@ -210,6 +237,17 @@ export default function App() {
           </div>
           <div className="flex items-center gap-2">
             <ModelSelector value={defaultModel} onChange={setDefaultModel} disabled={isStreaming} />
+            <button
+              type="button"
+              onClick={() => setAppLauncherOpen(true)}
+              aria-label="Apri launcher app"
+              title="App (Netflix, DAZN, VS Code…)"
+              className="focus-accent rounded-md p-2 text-muted-fg hover:text-white hover:bg-white/5"
+            >
+              <span aria-hidden className="text-base">
+                🚀
+              </span>
+            </button>
             <a
               href="/admin"
               onClick={(e) => {
@@ -320,6 +358,7 @@ export default function App() {
         isStreaming={isStreaming}
         onReplayAudio={handleReplayAudio}
         onCopy={handleCopy}
+        onGenerateImage={handleGenerateImage}
         replayingMessageId={replayingMessageId}
       />
       <ArtifactsPanel
@@ -336,6 +375,18 @@ export default function App() {
           setReplayingMessageId(null);
         }}
       />
+      <AppLauncher open={appLauncherOpen} onClose={() => setAppLauncherOpen(false)} />
+      {imageDialog && (
+        <ImageRequestDialog
+          initialPrompt={imageDialog.initial}
+          onClose={() => setImageDialog(null)}
+          onGenerate={(prompt) => {
+            void generateImageForMessage(imageDialog.msg, prompt);
+            // Make sure the panel is open so the user sees the loading card
+            setArtifactsPanelOpen(true);
+          }}
+        />
+      )}
     </AppShell>
   );
 }

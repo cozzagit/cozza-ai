@@ -22,7 +22,8 @@ export function Sidebar({ open, conversations, activeId, onSelect, onClose, onNe
       <aside
         className={[
           'fixed md:static inset-y-0 left-0 z-40 w-72 bg-oled-200 border-r border-white/5 flex flex-col transition-transform',
-          open ? 'translate-x-0' : '-translate-x-full md:-translate-x-full',
+          // Mobile: drawer (translate-x with `open`). Desktop (md+): always visible.
+          open ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
         ].join(' ')}
         aria-label="Cronologia conversazioni"
       >
@@ -38,9 +39,7 @@ export function Sidebar({ open, conversations, activeId, onSelect, onClose, onNe
         </div>
         <ul className="flex-1 overflow-y-auto p-2 space-y-1">
           {conversations.length === 0 ? (
-            <li className="text-muted-fg/60 text-sm p-3">
-              Nessuna conversazione ancora.
-            </li>
+            <li className="text-muted-fg/60 text-sm p-3">Nessuna conversazione ancora.</li>
           ) : (
             conversations.map((c) => (
               <li key={c.id}>
