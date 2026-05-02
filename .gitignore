@@ -18,6 +18,10 @@ build/
 .dev.vars.local
 *.pem
 *.key
+chiavi*.txt
+**/chiavi_api*.txt
+*api_keys*.txt
+*secrets*.txt
 
 # Cache
 .cache/
