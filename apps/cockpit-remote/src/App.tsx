@@ -3,10 +3,12 @@ import { useRemoteStore, type RemoteMode } from './store';
 import { useCockpitBus, type CockpitEvent } from './bus';
 import { Trackpad } from './Trackpad';
 import { Voice } from './Voice';
+import { Dpad } from './Dpad';
 
 const MODES: { id: RemoteMode; icon: string; label: string }[] = [
   { id: 'home', icon: '◉', label: 'Home' },
-  { id: 'trackpad', icon: '🖱', label: 'Trackpad' },
+  { id: 'trackpad', icon: '🖱', label: 'Mouse' },
+  { id: 'dpad', icon: '✚', label: 'D-pad' },
   { id: 'switcher', icon: '⟳', label: 'Switch' },
   { id: 'actions', icon: '⚡', label: 'Actions' },
   { id: 'voice', icon: '🎤', label: 'Voice' },
@@ -32,13 +34,40 @@ export function App() {
         {mode === 'home' && <Home events={events} onSelect={(p) => console.log('select', p)} />}
         {mode === 'trackpad' && (
           <TrackpadView
-            onMove={(dx, dy) => send({ kind: 'input', type: 'mouseMove', payload: { dx, dy } })}
+            onMove={(dx, dy) =>
+              send({
+                kind: 'input',
+                type: 'mouseMove',
+                target: useRemoteStore.getState().trackpadTarget,
+                payload: { dx, dy },
+              })
+            }
             onClick={(button, double) => {
               vibrate(8);
-              send({ kind: 'input', type: 'mouseClick', payload: { button, double } });
+              send({
+                kind: 'input',
+                type: 'mouseClick',
+                target: useRemoteStore.getState().trackpadTarget,
+                payload: { button, double },
+              });
             }}
-            onScroll={(dy) => send({ kind: 'input', type: 'mouseScroll', payload: { dy } })}
+            onScroll={(dy) =>
+              send({
+                kind: 'input',
+                type: 'mouseScroll',
+                target: useRemoteStore.getState().trackpadTarget,
+                payload: { dy },
+              })
+            }
             onKill={() => send({ kind: 'killswitch', killCode: prompt('Kill code:') ?? '' })}
+          />
+        )}
+        {mode === 'dpad' && (
+          <Dpad
+            onKey={(key) => {
+              vibrate(6);
+              send({ kind: 'input', type: 'keyDown', target: 'hud', payload: { key } });
+            }}
           />
         )}
         {mode === 'switcher' && (
@@ -185,8 +214,26 @@ interface TrackpadViewProps {
   onKill: () => void;
 }
 function TrackpadView({ onMove, onClick, onScroll, onKill }: TrackpadViewProps) {
+  const target = useRemoteStore((s) => s.trackpadTarget);
+  const setTarget = useRemoteStore((s) => s.setTrackpadTarget);
   return (
     <div className="space-y-2">
+      <div role="radiogroup" className="flex gap-1 p-1 surface rounded-full text-xs">
+        <button
+          type="button"
+          onClick={() => setTarget('hud')}
+          className={`flex-1 rounded-full py-2 ${target === 'hud' ? 'bg-accent text-black font-semibold' : 'opacity-60'}`}
+        >
+          🛸 HUD overlay
+        </button>
+        <button
+          type="button"
+          onClick={() => setTarget('pc')}
+          className={`flex-1 rounded-full py-2 ${target === 'pc' ? 'bg-accent text-black font-semibold' : 'opacity-60'}`}
+        >
+          💻 PC casa
+        </button>
+      </div>
       <Trackpad onMove={onMove} onClick={onClick} onScroll={onScroll} />
       <div className="grid grid-cols-3 gap-2">
         <button

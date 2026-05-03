@@ -10,6 +10,7 @@ import { Diff } from './modes/Diff';
 import { Pomodoro } from './modes/Pomodoro';
 import { Spend } from './modes/Spend';
 import { Devstation } from './modes/Devstation';
+import { PointerOverlay } from './PointerOverlay';
 
 const MODES: { id: HudMode; label: string; icon: string }[] = [
   { id: 'devstation', label: 'Devstation', icon: '💻' },
@@ -106,6 +107,7 @@ export function App() {
         {mode === 'devstation' && <Devstation />}
         {mode === 'ambient' && <Ambient />}
       </main>
+      <PointerOverlay />
     </div>
   );
 }

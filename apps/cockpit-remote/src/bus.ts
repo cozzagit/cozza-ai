@@ -71,7 +71,9 @@ export function useCockpitBus(maxEvents = 100): BusApi {
 
   const send = (frame: Record<string, unknown>): void => {
     const ws = wsRef.current;
-    if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(frame));
+    if (ws && ws.readyState === ws.OPEN) {
+      ws.send(JSON.stringify(frame));
+    }
   };
   const vibrate = (ms = 8): void => {
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) navigator.vibrate(ms);

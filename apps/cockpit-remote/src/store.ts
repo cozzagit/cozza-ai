@@ -1,17 +1,22 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type RemoteMode = 'home' | 'trackpad' | 'switcher' | 'actions' | 'voice';
+export type RemoteMode = 'home' | 'trackpad' | 'dpad' | 'switcher' | 'actions' | 'voice';
+
+/** Where the trackpad routes its events: HUD virtual cursor, or PC native input. */
+export type TrackpadTarget = 'hud' | 'pc';
 
 interface RemoteState {
   mode: RemoteMode;
   token: string;
   busUrl: string;
   trackpadSensitivity: number;
+  trackpadTarget: TrackpadTarget;
   setMode: (m: RemoteMode) => void;
   setToken: (t: string) => void;
   setBusUrl: (u: string) => void;
   setSensitivity: (s: number) => void;
+  setTrackpadTarget: (t: TrackpadTarget) => void;
 }
 
 const isProd = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
@@ -24,11 +29,13 @@ export const useRemoteStore = create<RemoteState>()(
       token: '',
       busUrl: DEFAULT_BUS_URL,
       trackpadSensitivity: 1.5,
+      trackpadTarget: 'hud',
       setMode: (m) => set({ mode: m }),
       setToken: (t) => set({ token: t }),
       setBusUrl: (u) => set({ busUrl: u }),
       setSensitivity: (s) => set({ trackpadSensitivity: s }),
+      setTrackpadTarget: (t) => set({ trackpadTarget: t }),
     }),
-    { name: 'cozza-cockpit-remote', version: 1 },
+    { name: 'cozza-cockpit-remote', version: 2 },
   ),
 );

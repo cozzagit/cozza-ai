@@ -26,8 +26,10 @@ interface IncomingFrame {
   type?: 'mouseMove' | 'mouseClick' | 'mouseScroll' | 'keyDown';
   payload?: Record<string, unknown>;
   killCode?: string;
+  // input target — 'pc' = nut.js native, 'hud' = software cursor in HUD,
+  // 'all' = both. Default 'pc' for backwards compat.
+  target?: 'hud' | 'pc' | 'all' | 'desktop' | 'remote';
   // broadcast / handoff
-  target?: 'hud' | 'desktop' | 'remote' | 'all';
   command?: string;
   args?: Record<string, unknown>;
   surface?: 'desktop' | 'xr' | 'mobile';
@@ -115,29 +117,54 @@ export function mountWs(server: Server): void {
         c.ws.send(JSON.stringify({ kind: 'killed', ts: Date.now() }));
         return;
       case 'input': {
-        if (!hasScope(c.claims, 'input:write')) {
-          c.ws.send(JSON.stringify({ kind: 'error', message: 'missing scope input:write' }));
-          return;
-        }
-        if (!isInputArmed()) {
-          c.ws.send(JSON.stringify({ kind: 'error', message: 'input plane disarmed' }));
-          return;
-        }
         const p = frame.payload ?? {};
-        if (frame.type === 'mouseMove') await dispatchMouseMove(p);
-        else if (frame.type === 'mouseClick') await dispatchMouseClick(p);
-        else if (frame.type === 'mouseScroll') await dispatchMouseScroll(p as { dy: number });
-        else if (frame.type === 'keyDown') await dispatchKey(p as { key: string });
+        const target = frame.target ?? 'pc'; // default backwards-compat
+        // Always broadcast input events on the bus so HUD/Remote/etc.
+        // listening clients (e.g. PointerOverlay in HUD) can react.
+        bus.emitEvent({
+          type: 'input',
+          ts: Date.now(),
+          kind: (frame.type ?? 'mouseMove') as
+            | 'mouseMove'
+            | 'mouseClick'
+            | 'mouseScroll'
+            | 'keyDown'
+            | 'keyUp'
+            | 'macro',
+          payload: p,
+        });
+        // PC-targeted events also drive nut.js (real cursor on home PC).
+        if (target === 'pc' || target === 'all') {
+          if (!hasScope(c.claims, 'input:write')) {
+            c.ws.send(JSON.stringify({ kind: 'error', message: 'missing scope input:write' }));
+            return;
+          }
+          if (!isInputArmed()) return; // silently drop, broadcast still happened
+          if (frame.type === 'mouseMove') await dispatchMouseMove(p);
+          else if (frame.type === 'mouseClick') await dispatchMouseClick(p);
+          else if (frame.type === 'mouseScroll') await dispatchMouseScroll(p as { dy: number });
+          else if (frame.type === 'keyDown') await dispatchKey(p as { key: string });
+        }
         return;
       }
       case 'broadcast': {
         if (!frame.command || !frame.target) return;
         const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        // CommandEvent.target is the narrower 'hud'|'desktop'|'remote'|'all'
+        const allowed: ReadonlyArray<'hud' | 'desktop' | 'remote' | 'all'> = [
+          'hud',
+          'desktop',
+          'remote',
+          'all',
+        ];
+        const target = (allowed as readonly string[]).includes(frame.target)
+          ? (frame.target as 'hud' | 'desktop' | 'remote' | 'all')
+          : 'all';
         bus.emitEvent({
           type: 'command',
           ts: Date.now(),
           id,
-          target: frame.target,
+          target,
           command: frame.command,
           ...(frame.args ? { args: frame.args } : {}),
         });
