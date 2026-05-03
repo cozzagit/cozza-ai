@@ -22,6 +22,11 @@ import { useSettingsStore } from './stores/settings';
 import { useWorkspaceStore } from './stores/workspace';
 import { extractArtifacts, stripFencesForTts, type Artifact } from './lib/artifacts';
 import type { MessageRecord } from './lib/db';
+import type { VoiceSettingsOverride } from '@cozza/shared';
+
+// Stable empty reference so the per-voice selector doesn't trigger
+// re-renders when no override exists for the active voiceId.
+const EMPTY_VOICE_SETTINGS: VoiceSettingsOverride = Object.freeze({});
 
 export default function App() {
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -38,7 +43,9 @@ export default function App() {
   const ttsAutoplay = useSettingsStore((s) => s.ttsAutoplay);
   const setTtsAutoplay = useSettingsStore((s) => s.setTtsAutoplay);
   const voiceId = useSettingsStore((s) => s.voiceId);
-  const voiceSettingsOverride = useSettingsStore((s) => s.voiceSettingsOverride);
+  const voiceSettingsOverride = useSettingsStore(
+    (s) => s.voiceSettingsByVoice[voiceId] ?? EMPTY_VOICE_SETTINGS,
+  );
   const artifactsPanelOpen = useSettingsStore((s) => s.artifactsPanelOpen);
   const setArtifactsPanelOpen = useSettingsStore((s) => s.setArtifactsPanelOpen);
 

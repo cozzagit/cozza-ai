@@ -92,10 +92,9 @@ export function AdminMaintenance() {
       }
       // Unlock first (gesture user)
       await StreamingAudioPlayer.unlock();
-      const blob = await fetchVoicePreview(
-        voiceId,
-        'Test audio. Se senti questa frase, il sistema TTS funziona correttamente.',
-      );
+      const blob = await fetchVoicePreview(voiceId, {
+        text: 'Test audio. Se senti questa frase, il sistema TTS funziona correttamente.',
+      });
       const url = URL.createObjectURL(blob);
       const a = new Audio(url);
       a.setAttribute('playsinline', '');

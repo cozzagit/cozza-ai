@@ -4,6 +4,7 @@ import type { AppEnv } from '@/types/env';
 import { requireAdmin } from '@/middleware/admin-auth';
 import { validateBody, getValidated } from '@/middleware/validate';
 import { streamElevenLabs } from '@/lib/elevenlabs';
+import { VoiceSettingsOverrideSchema } from '@cozza/shared';
 
 export const adminVoicesRoutes = new Hono<AppEnv>();
 
@@ -91,6 +92,9 @@ adminVoicesRoutes.get('/', async (c) => {
 const PreviewSchema = z.object({
   voiceId: z.string().min(1).max(64),
   text: z.string().min(1).max(500).optional(),
+  /** Optional per-call override of voice_settings, so the admin modal
+   *  can preview pending tuning without saving it first. */
+  settings: VoiceSettingsOverrideSchema.optional(),
 });
 type PreviewPayload = z.infer<typeof PreviewSchema>;
 
@@ -102,13 +106,14 @@ adminVoicesRoutes.post('/preview', validateBody(PreviewSchema), async (c) => {
   if (!cfg.ELEVENLABS_API_KEY) {
     return c.json({ error: { code: 'MISCONFIGURED', message: 'missing elevenlabs api key' } }, 500);
   }
-  // Preview uses the voice's NATIVE settings (no override) so what the user
-  // hears in admin matches what they hear in chat by default.
+  // When `settings` is supplied (admin modal preview), apply that override.
+  // Otherwise preview uses the voice's NATIVE settings, matching default chat.
   const upstream = await streamElevenLabs({
     apiKey: cfg.ELEVENLABS_API_KEY,
     text: body.text ?? DEFAULT_PREVIEW_TEXT,
     voiceId: body.voiceId,
     modelId: 'eleven_flash_v2_5',
+    ...(body.settings ? { settings: body.settings } : {}),
   });
   if (!upstream.ok || !upstream.body) {
     const detail = await upstream.text().catch(() => '');

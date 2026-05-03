@@ -1,3 +1,5 @@
+import type { VoiceSettingsOverride } from '@cozza/shared';
+
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? '';
 const STORAGE_KEY = 'cozza-admin-token';
 
@@ -125,11 +127,17 @@ export async function fetchVoiceSettings(voiceId: string): Promise<AdminVoiceSet
   return (await res.json()) as AdminVoiceSettings;
 }
 
-export async function fetchVoicePreview(voiceId: string, text?: string): Promise<Blob> {
+export async function fetchVoicePreview(
+  voiceId: string,
+  opts: { text?: string; settings?: VoiceSettingsOverride } = {},
+): Promise<Blob> {
+  const payload: Record<string, unknown> = { voiceId };
+  if (opts.text) payload.text = opts.text;
+  if (opts.settings && Object.keys(opts.settings).length > 0) payload.settings = opts.settings;
   const res = await adminFetch('/api/admin/voices/preview', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(text ? { voiceId, text } : { voiceId }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     throw new AdminApiError(`preview ${res.status}`, res.status);

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchAdminVoices, fetchVoicePreview, type AdminVoice } from '@/lib/admin-api';
 import { useSettingsStore } from '@/stores/settings';
+import { VoiceParamsModal } from './VoiceParamsModal';
 
 type Tab = 'curated' | 'custom' | 'all';
 
@@ -36,7 +37,9 @@ export function AdminVoices() {
   const setVoiceId = useSettingsStore((s) => s.setVoiceId);
   const curatedOnly = useSettingsStore((s) => s.voicesCuratedOnly);
   const setCuratedOnly = useSettingsStore((s) => s.setVoicesCuratedOnly);
+  const overrideMap = useSettingsStore((s) => s.voiceSettingsByVoice);
   const [tab, setTab] = useState<Tab>(curatedOnly ? 'curated' : 'all');
+  const [paramsFor, setParamsFor] = useState<AdminVoice | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -124,9 +127,9 @@ export function AdminVoices() {
         <span className="font-mono text-accent">
           {voices.find((v) => v.id === currentVoiceId)?.name ?? currentVoiceId ?? '— nessuna —'}
         </span>
-        . Anteprima riproduce coi <em>tuoi parametri salvati</em> su ElevenLabs (stability,
-        similarity, style, speed). Per regolare al volo da qui senza editare la voce, vai in{' '}
-        <strong>Settings → Parametri voce</strong>.
+        . Click su <span className="font-mono">⚙</span> in ogni card per personalizzare i parametri{' '}
+        <em>per quella voce</em> (stability, similarity, style, speed, speaker boost). Le modifiche
+        sono locali e si applicano solo quando quella voce è in uso.
       </p>
 
       <div className="flex flex-wrap gap-2 items-center">
@@ -181,8 +184,10 @@ export function AdminVoices() {
                 voice={v}
                 active={v.id === currentVoiceId}
                 playing={previewing === v.id}
+                hasOverride={Object.keys(overrideMap[v.id] ?? {}).length > 0}
                 onPreview={() => void playPreview(v)}
                 onSet={() => setAsDefault(v)}
+                onOpenParams={() => setParamsFor(v)}
               />
             ))}
           </div>
@@ -203,8 +208,10 @@ export function AdminVoices() {
                 voice={v}
                 active={v.id === currentVoiceId}
                 playing={previewing === v.id}
+                hasOverride={Object.keys(overrideMap[v.id] ?? {}).length > 0}
                 onPreview={() => void playPreview(v)}
                 onSet={() => setAsDefault(v)}
+                onOpenParams={() => setParamsFor(v)}
               />
             ))}
           </div>
@@ -216,6 +223,8 @@ export function AdminVoices() {
           Nessuna voce corrisponde ai filtri.
         </p>
       )}
+
+      {paramsFor && <VoiceParamsModal voice={paramsFor} onClose={() => setParamsFor(null)} />}
     </div>
   );
 }
@@ -224,14 +233,18 @@ function VoiceCard({
   voice: v,
   active,
   playing,
+  hasOverride,
   onPreview,
   onSet,
+  onOpenParams,
 }: {
   voice: AdminVoice;
   active: boolean;
   playing: boolean;
+  hasOverride: boolean;
   onPreview: () => void;
   onSet: () => void;
+  onOpenParams: () => void;
 }) {
   return (
     <article
@@ -258,6 +271,14 @@ function VoiceCard({
               🇮🇹 Native
             </span>
           )}
+          {hasOverride && (
+            <span
+              className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-fuchsia-950/50 border border-fuchsia-700/40 text-fuchsia-200"
+              title="Override parametri attivo per questa voce"
+            >
+              ● tuned
+            </span>
+          )}
         </div>
       </header>
       {v.descriptive && (
@@ -273,6 +294,20 @@ function VoiceCard({
           className="focus-accent flex-1 rounded-lg px-3 py-2 text-sm bg-white/5 hover:bg-white/10 disabled:opacity-50"
         >
           {playing ? '▶ in riproduzione…' : '▶ Anteprima'}
+        </button>
+        <button
+          type="button"
+          onClick={onOpenParams}
+          aria-label={`Personalizza parametri di ${v.name}`}
+          title="Parametri voce"
+          className={[
+            'focus-accent rounded-lg px-3 py-2 text-sm border',
+            hasOverride
+              ? 'bg-fuchsia-950/40 border-fuchsia-700/40 text-fuchsia-200 hover:bg-fuchsia-950/60'
+              : 'bg-white/5 hover:bg-white/10 border-white/10',
+          ].join(' ')}
+        >
+          ⚙
         </button>
         <button
           type="button"

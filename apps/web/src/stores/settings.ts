@@ -13,9 +13,10 @@ interface SettingsState {
   temperature: number;
   artifactsPanelOpen: boolean;
   autoEnrichVisuals: boolean;
-  /** Per-voice override of ElevenLabs voice_settings. Empty = use the
-   *  voice's native saved settings (preserving custom tuning). */
-  voiceSettingsOverride: VoiceSettingsOverride;
+  /** Per-voice override of ElevenLabs voice_settings, keyed by voiceId.
+   *  An empty/missing entry = use the voice's native saved settings
+   *  (preserving custom tuning). */
+  voiceSettingsByVoice: Record<string, VoiceSettingsOverride>;
   /** Show only the curated short list of voices in admin/voices. */
   voicesCuratedOnly: boolean;
   setDefaultModel: (m: ChatModel) => void;
@@ -28,9 +29,17 @@ interface SettingsState {
   setTemperature: (v: number) => void;
   setArtifactsPanelOpen: (v: boolean) => void;
   setAutoEnrichVisuals: (v: boolean) => void;
-  setVoiceSettingsOverride: (v: VoiceSettingsOverride) => void;
-  resetVoiceSettingsOverride: () => void;
+  setVoiceSettings: (voiceId: string, v: VoiceSettingsOverride) => void;
+  resetVoiceSettings: (voiceId: string) => void;
   setVoicesCuratedOnly: (v: boolean) => void;
+}
+
+/** Helper: pull the override map entry for a given voiceId, with empty fallback. */
+export function getVoiceSettingsFor(
+  state: { voiceSettingsByVoice: Record<string, VoiceSettingsOverride> },
+  voiceId: string,
+): VoiceSettingsOverride {
+  return state.voiceSettingsByVoice[voiceId] ?? {};
 }
 
 const ENV_DEFAULT_MODEL =
@@ -199,7 +208,7 @@ export const useSettingsStore = create<SettingsState>()(
       temperature: 0.7,
       artifactsPanelOpen: false,
       autoEnrichVisuals: true,
-      voiceSettingsOverride: {},
+      voiceSettingsByVoice: {},
       voicesCuratedOnly: true,
       setDefaultModel: (m) => set({ defaultModel: m }),
       setVoiceEnabled: (v) => set({ voiceEnabled: v }),
@@ -211,13 +220,25 @@ export const useSettingsStore = create<SettingsState>()(
       setTemperature: (v) => set({ temperature: v }),
       setArtifactsPanelOpen: (v) => set({ artifactsPanelOpen: v }),
       setAutoEnrichVisuals: (v) => set({ autoEnrichVisuals: v }),
-      setVoiceSettingsOverride: (v) => set({ voiceSettingsOverride: v }),
-      resetVoiceSettingsOverride: () => set({ voiceSettingsOverride: {} }),
+      setVoiceSettings: (voiceId, v) =>
+        set((state) => {
+          const next = { ...state.voiceSettingsByVoice };
+          if (Object.keys(v).length === 0) delete next[voiceId];
+          else next[voiceId] = v;
+          return { voiceSettingsByVoice: next };
+        }),
+      resetVoiceSettings: (voiceId) =>
+        set((state) => {
+          if (!(voiceId in state.voiceSettingsByVoice)) return {};
+          const next = { ...state.voiceSettingsByVoice };
+          delete next[voiceId];
+          return { voiceSettingsByVoice: next };
+        }),
       setVoicesCuratedOnly: (v) => set({ voicesCuratedOnly: v }),
     }),
     {
       name: 'cozza-settings',
-      version: 12,
+      version: 13,
       migrate: (persisted, version) => {
         const state = persisted as Partial<SettingsState> | null;
         if (!state) return {};
@@ -319,8 +340,28 @@ Verranno renderizzati in un pannello visivo separato accanto al testo.`;
         // voice's native saved tuning) + voicesCuratedOnly (default true:
         // hide the long premade list, keep only curated + user customs).
         if (version < 12) {
-          state.voiceSettingsOverride = state.voiceSettingsOverride ?? {};
+          (
+            state as Partial<SettingsState> & { voiceSettingsOverride?: VoiceSettingsOverride }
+          ).voiceSettingsOverride =
+            (state as Partial<SettingsState> & { voiceSettingsOverride?: VoiceSettingsOverride })
+              .voiceSettingsOverride ?? {};
           state.voicesCuratedOnly = state.voicesCuratedOnly ?? true;
+        }
+        // v12 → v13: per-voice override map. Carry the previous global
+        // override over to the currently-selected voice if any keys were
+        // set, so the user's tuning isn't lost.
+        if (version < 13) {
+          const legacy = (
+            state as Partial<SettingsState> & { voiceSettingsOverride?: VoiceSettingsOverride }
+          ).voiceSettingsOverride;
+          const map: Record<string, VoiceSettingsOverride> = state.voiceSettingsByVoice ?? {};
+          if (legacy && Object.keys(legacy).length > 0 && state.voiceId) {
+            map[state.voiceId] = legacy;
+          }
+          state.voiceSettingsByVoice = map;
+          delete (
+            state as Partial<SettingsState> & { voiceSettingsOverride?: VoiceSettingsOverride }
+          ).voiceSettingsOverride;
         }
         return state;
       },
