@@ -18,6 +18,33 @@ interface EnrichArgs {
 }
 
 /**
+ * Removes the persona section that instructs the model to emit visual
+ * fences (image-prompt / mermaid / svg) when the user has the visuals
+ * toggle OFF. We delete the "REGOLA CRITICA" block (delimited by the
+ * box-drawing dividers) and append an explicit suppression note.
+ */
+function stripVisualsInstruction(persona: string): string {
+  if (!persona) return persona;
+  // The default persona uses ════ box-drawing dividers around the
+  // critical visuals rule. We strip both the rule block and the
+  // POSITIVE / NEGATIVE example blocks that follow it.
+  const cleaned = persona
+    .replace(
+      /═{30,}\s*\n\s*REGOLA CRITICA[\s\S]*?(?=(═{30,}\s*\n\s*DOMANDE SU INFO RECENTI)|$)/u,
+      '',
+    )
+    .replace(/═{30,}\s*\n\s*ESEMPIO POSITIVO[\s\S]*?(?=(═{30,}\s*\n\s*ESEMPIO NEGATIVO)|$)/u, '')
+    .replace(
+      /═{30,}\s*\n\s*ESEMPIO NEGATIVO[\s\S]*?(?=(═{30,}\s*\n\s*DOMANDE SU INFO RECENTI)|$)/u,
+      '',
+    )
+    .trim();
+  const suppress =
+    '\n\nIMPORTANTE: NON includere mai blocchi `image-prompt`, `mermaid`, `svg`, `html` o link a immagini Markdown nelle risposte. Rispondi in solo testo, eventualmente con tabelle Markdown e elenchi.';
+  return cleaned + suppress;
+}
+
+/**
  * Background enrichment: asks /api/enrich for missing visual blocks and
  * appends them to the persisted message. Live-query in the UI picks up
  * the change automatically and the artifacts panel shows the new
@@ -136,7 +163,14 @@ export function useChat(opts: UseChatOptions) {
 
         // Defensive: settings values may be undefined right after a migration.
         const settings = useSettingsStore.getState();
-        const persona = (settings.personaPrompt ?? '').trim();
+        const rawPersona = (settings.personaPrompt ?? '').trim();
+        // When the user has visuals OFF, strip the "REGOLA CRITICA" block
+        // from the persona prompt and append a counter-instruction. This
+        // way the model returns plain text without trying to inject
+        // image-prompt/mermaid/svg fences.
+        const persona = settings.autoEnrichVisuals
+          ? rawPersona
+          : stripVisualsInstruction(rawPersona);
         const temperature =
           typeof settings.temperature === 'number' && Number.isFinite(settings.temperature)
             ? settings.temperature

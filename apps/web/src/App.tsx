@@ -42,6 +42,8 @@ export default function App() {
   const setDefaultModel = useSettingsStore((s) => s.setDefaultModel);
   const ttsAutoplay = useSettingsStore((s) => s.ttsAutoplay);
   const setTtsAutoplay = useSettingsStore((s) => s.setTtsAutoplay);
+  const autoEnrichVisuals = useSettingsStore((s) => s.autoEnrichVisuals);
+  const setAutoEnrichVisuals = useSettingsStore((s) => s.setAutoEnrichVisuals);
   const voiceId = useSettingsStore((s) => s.voiceId);
   const voiceSettingsOverride = useSettingsStore(
     (s) => s.voiceSettingsByVoice[voiceId] ?? EMPTY_VOICE_SETTINGS,
@@ -386,6 +388,24 @@ export default function App() {
                 }
               />
             </div>
+            <button
+              type="button"
+              onClick={() => setAutoEnrichVisuals(!autoEnrichVisuals)}
+              aria-pressed={autoEnrichVisuals}
+              title={
+                autoEnrichVisuals
+                  ? 'Visivi auto attivi (immagini/diagrammi/SVG generati nelle risposte)'
+                  : 'Visivi auto disattivati (solo testo)'
+              }
+              className={[
+                'focus-accent shrink-0 rounded-full w-12 h-12 flex items-center justify-center border',
+                autoEnrichVisuals
+                  ? 'bg-accent/15 border-accent/40 text-accent'
+                  : 'border-white/10 text-muted-fg hover:text-white',
+              ].join(' ')}
+            >
+              {autoEnrichVisuals ? '🖼️' : '⊘'}
+            </button>
             <button
               type="button"
               onClick={() => {
