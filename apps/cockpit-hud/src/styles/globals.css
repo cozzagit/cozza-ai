@@ -10,12 +10,12 @@
   body,
   #root {
     height: 100%;
-    background: #000;
-    color: #fff;
     overscroll-behavior: none;
   }
   body {
     font-family: 'Geist', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--fg);
   }
   ::-webkit-scrollbar {
     width: 0;
@@ -25,24 +25,30 @@
 
 /* ─── Theme Cyberpunk ─────────────────────────────────────────── */
 .theme-cyberpunk {
-  --bg: #000;
+  --bg: #000000;
   --bg-soft: #0a0a0e;
   --fg: #ffffff;
-  --muted: rgba(255, 255, 255, 0.55);
+  --fg-muted: rgba(255, 255, 255, 0.6);
+  --fg-faint: rgba(255, 255, 255, 0.4);
   --accent: #00e5ff;
   --magenta: #ff00aa;
   --amber: #ffb300;
+  --line: rgba(0, 229, 255, 0.18);
+  --line-strong: rgba(0, 229, 255, 0.7);
+  --ok: #00e5ff;
+  --warn: #ffb300;
+  --down: #ff3366;
 }
 .theme-cyberpunk .surface {
   background: linear-gradient(180deg, rgba(0, 229, 255, 0.04), rgba(255, 0, 170, 0.02));
-  border: 1px solid rgba(0, 229, 255, 0.18);
+  border: 1px solid var(--line);
   box-shadow:
     0 0 24px rgba(0, 229, 255, 0.06),
     inset 0 0 12px rgba(0, 229, 255, 0.04);
   backdrop-filter: blur(6px);
 }
 .theme-cyberpunk .neon-border {
-  border: 1px solid rgba(0, 229, 255, 0.7);
+  border: 1px solid var(--line-strong);
   box-shadow:
     0 0 12px rgba(0, 229, 255, 0.4),
     inset 0 0 12px rgba(0, 229, 255, 0.15);
@@ -79,24 +85,45 @@
 }
 
 /* ─── Theme Bauhaus ───────────────────────────────────────────── */
+/* Palette: warm off-white background, near-black text, primary red,
+   complementary blue and yellow accents. Two-px borders, hard shadows
+   in pure black, chunky uppercase display font. Inspired by Dessau-era
+   primitives: square / circle / triangle in red / blue / yellow. */
 .theme-bauhaus {
-  --bg: #ffffff;
-  --bg-soft: #f4f4f0;
+  --bg: #f4efe6; /* warm off-white */
+  --bg-soft: #ffffff;
   --fg: #0a0a0a;
-  --muted: rgba(10, 10, 10, 0.55);
-  --accent: #e63946;
+  --fg-muted: rgba(10, 10, 10, 0.72);
+  --fg-faint: rgba(10, 10, 10, 0.5);
+  --accent: #d62828; /* primary red */
+  --magenta: #003049; /* deep blue */
+  --amber: #f4a261; /* warm yellow-orange */
+  --line: #0a0a0a;
+  --line-strong: #0a0a0a;
+  --ok: #2a9d8f; /* deep teal-green for OK */
+  --warn: #f4a261;
+  --down: #d62828;
 }
-.theme-bauhaus {
-  background: #ffffff;
+.theme-bauhaus body,
+html.theme-bauhaus body {
+  background: #f4efe6;
   color: #0a0a0a;
 }
 .theme-bauhaus .surface {
   background: #ffffff;
   border: 2px solid #0a0a0a;
   box-shadow: 6px 6px 0 #0a0a0a;
+  color: #0a0a0a;
+  backdrop-filter: none;
 }
 .theme-bauhaus .neon-border {
   border: 2px solid #0a0a0a;
+  box-shadow: 4px 4px 0 #0a0a0a;
+  color: #0a0a0a;
+}
+.theme-bauhaus .neon-border:hover {
+  background: #0a0a0a;
+  color: #ffffff;
 }
 .theme-bauhaus .display {
   font-family: 'Geist', 'Inter', system-ui, sans-serif;
@@ -107,54 +134,122 @@
 .theme-bauhaus .glow-cyan,
 .theme-bauhaus .glow-magenta {
   text-shadow: none;
+  color: #0a0a0a;
 }
 .theme-bauhaus .grid-bg {
-  background: none;
+  /* subtle dotted grid in the warm background */
+  background-image: radial-gradient(circle, rgba(10, 10, 10, 0.12) 1px, transparent 1.5px);
+  background-size: 24px 24px;
 }
 .theme-bauhaus .scanlines::before {
   display: none;
 }
 
-/* health pill, theme-aware via CSS vars */
+/* Tailwind utility class overrides scoped to bauhaus, so the same JSX
+   renders correctly in either theme without per-component branching. */
+.theme-bauhaus .text-white,
+.theme-bauhaus .glow-cyan {
+  color: #0a0a0a !important;
+}
+.theme-bauhaus .opacity-60,
+.theme-bauhaus .opacity-70 {
+  opacity: 0.85;
+}
+.theme-bauhaus .bg-black\/40 {
+  background: #ffffff !important;
+}
+.theme-bauhaus .border-current\/20,
+.theme-bauhaus .border-current\/10 {
+  border-color: #0a0a0a !important;
+  border-width: 2px !important;
+}
+.theme-bauhaus input[type='search'],
+.theme-bauhaus input[type='password'],
+.theme-bauhaus input[type='text'] {
+  background: #ffffff;
+  color: #0a0a0a;
+  border: 2px solid #0a0a0a;
+  border-radius: 0;
+}
+.theme-bauhaus input[type='search']::placeholder,
+.theme-bauhaus input[type='password']::placeholder {
+  color: rgba(10, 10, 10, 0.5);
+}
+.theme-bauhaus button {
+  color: inherit;
+}
+.theme-bauhaus pre,
+.theme-bauhaus code {
+  background: #ffffff !important;
+  color: #0a0a0a !important;
+  border: 1px solid #0a0a0a;
+}
+
+/* ─── Health pills (theme-aware) ──────────────────────────────── */
 .pill {
-  padding: 2px 8px;
+  padding: 2px 10px;
   border-radius: 999px;
   font-size: 11px;
   font-family: 'Geist Mono', monospace;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 .pill-ok {
   color: #00e5ff;
   border: 1px solid #00e5ff;
+  background: transparent;
 }
 .pill-warn {
   color: #ffb300;
   border: 1px solid #ffb300;
+  background: transparent;
 }
 .pill-down {
   color: #ff3366;
   border: 1px solid #ff3366;
+  background: transparent;
 }
 .pill-unknown {
-  color: rgba(255, 255, 255, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent;
+}
+
+/* Bauhaus pills: solid color blocks, square corners, no border-radius round */
+.theme-bauhaus .pill {
+  border-radius: 4px;
+  border-width: 2px;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 .theme-bauhaus .pill-ok {
-  color: #0a0a0a;
+  color: #ffffff;
+  background: #2a9d8f;
   border-color: #0a0a0a;
-  background: #b7f4a2;
 }
 .theme-bauhaus .pill-warn {
   color: #0a0a0a;
+  background: #f4a261;
   border-color: #0a0a0a;
-  background: #ffd166;
 }
 .theme-bauhaus .pill-down {
   color: #ffffff;
+  background: #d62828;
   border-color: #0a0a0a;
-  background: #e63946;
 }
 .theme-bauhaus .pill-unknown {
   color: #0a0a0a;
+  background: #e9e4d8;
   border-color: #0a0a0a;
-  background: #e5e5e5;
+}
+
+/* Mode switcher pills theme-aware */
+.theme-bauhaus nav button {
+  color: #0a0a0a;
+}
+.theme-bauhaus .neon-border {
+  background: #ffd166;
 }
