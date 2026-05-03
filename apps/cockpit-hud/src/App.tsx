@@ -9,8 +9,10 @@ import { Ambient } from './modes/Ambient';
 import { Diff } from './modes/Diff';
 import { Pomodoro } from './modes/Pomodoro';
 import { Spend } from './modes/Spend';
+import { Devstation } from './modes/Devstation';
 
 const MODES: { id: HudMode; label: string; icon: string }[] = [
+  { id: 'devstation', label: 'Devstation', icon: '💻' },
   { id: 'vitals', label: 'Vitals', icon: '◉' },
   { id: 'stream', label: 'Stream', icon: '⟴' },
   { id: 'logs', label: 'Logs', icon: '☰' },
@@ -101,6 +103,7 @@ export function App() {
         {mode === 'metrics' && <Metrics events={events} />}
         {mode === 'spend' && <Spend events={events} />}
         {mode === 'pomodoro' && <Pomodoro />}
+        {mode === 'devstation' && <Devstation />}
         {mode === 'ambient' && <Ambient />}
       </main>
     </div>

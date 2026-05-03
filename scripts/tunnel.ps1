@@ -18,6 +18,16 @@ param(
   [string]$KeyPath    = "$env:USERPROFILE\.ssh\cozza_cockpit_ed25519"
 )
 
+# Devstation extra forwards: VS Code via code-server, terminale via ttyd,
+# Vite dev servers per preview live (cozza-ai web, HUD, Remote).
+$ExtraForwards = @(
+  '-R', '8444:localhost:8444',   # code-server (VS Code web)
+  '-R', '7681:localhost:7681',   # ttyd (terminale pwsh)
+  '-R', '5173:localhost:5173',   # Vite cozza-ai web
+  '-R', '5174:localhost:5174',   # Vite cockpit-hud
+  '-R', '5175:localhost:5175'    # Vite cockpit-remote
+)
+
 $ErrorActionPreference = 'Stop'
 
 Write-Host "🛸 Cozza Cockpit Tunnel" -ForegroundColor Cyan
@@ -44,28 +54,34 @@ if ($autossh) {
   Write-Host "▶ autossh trovato → tunnel persistente con keepalive" -ForegroundColor Green
   $env:AUTOSSH_POLL    = '30'
   $env:AUTOSSH_GATETIME = '0'
-  & $autossh `
-    -M 0 `
-    -N `
-    -i $KeyPath `
-    -o ServerAliveInterval=15 `
-    -o ServerAliveCountMax=3 `
-    -o ExitOnForwardFailure=yes `
-    -o StrictHostKeyChecking=accept-new `
-    -R "${RemotePort}:localhost:${LocalPort}" `
-    "$VpsUser@$VpsHost"
+  $autosshArgs = @(
+    '-M', '0',
+    '-N',
+    '-i', $KeyPath,
+    '-o', 'ServerAliveInterval=15',
+    '-o', 'ServerAliveCountMax=3',
+    '-o', 'ExitOnForwardFailure=yes',
+    '-o', 'StrictHostKeyChecking=accept-new',
+    '-R', "${RemotePort}:localhost:${LocalPort}"
+  )
+  $autosshArgs += $ExtraForwards
+  $autosshArgs += "$VpsUser@$VpsHost"
+  & $autossh @autosshArgs
 } else {
   Write-Host "▶ autossh NON installato → uso ssh nativo con loop riavvio" -ForegroundColor Yellow
   while ($true) {
-    & ssh `
-      -N `
-      -i $KeyPath `
-      -o ServerAliveInterval=15 `
-      -o ServerAliveCountMax=3 `
-      -o ExitOnForwardFailure=yes `
-      -o StrictHostKeyChecking=accept-new `
-      -R "${RemotePort}:localhost:${LocalPort}" `
-      "$VpsUser@$VpsHost"
+    $sshArgs = @(
+      '-N',
+      '-i', $KeyPath,
+      '-o', 'ServerAliveInterval=15',
+      '-o', 'ServerAliveCountMax=3',
+      '-o', 'ExitOnForwardFailure=yes',
+      '-o', 'StrictHostKeyChecking=accept-new',
+      '-R', "${RemotePort}:localhost:${LocalPort}"
+    )
+    $sshArgs += $ExtraForwards
+    $sshArgs += "$VpsUser@$VpsHost"
+    & ssh @sshArgs
     Write-Host "  ⚠ tunnel caduto, riconnetto in 5s…" -ForegroundColor Yellow
     Start-Sleep -Seconds 5
   }

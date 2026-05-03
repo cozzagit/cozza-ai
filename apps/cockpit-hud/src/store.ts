@@ -10,6 +10,7 @@ export type HudMode =
   | 'metrics'
   | 'spend'
   | 'pomodoro'
+  | 'devstation'
   | 'ambient';
 
 interface CockpitState {
