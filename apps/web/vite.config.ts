@@ -88,6 +88,10 @@ export default defineConfig({
         ],
         maximumFileSizeToCacheInBytes: 1_500_000,
         navigateFallback: '/index.html',
+        // The chat PWA's service worker scope is `/`, so by default it would
+        // intercept navigations to `/cockpit/*` and serve the chat shell.
+        // Deny these paths so the browser fetches the cockpit dist/ directly.
+        navigateFallbackDenylist: [/^\/cockpit\//, /^\/admin/],
         // Auto-activate the new SW immediately so installed PWAs always get
         // the latest bundle on next load. Without this, mobile users would
         // sit on a stale cached version until they manually clear caches.

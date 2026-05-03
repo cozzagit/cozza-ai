@@ -294,6 +294,12 @@ export default function App() {
             </button>
             <a
               href="/cockpit/"
+              onClick={(e) => {
+                // Bypass the chat PWA's service worker (scope=/) which would
+                // otherwise serve its cached shell for /cockpit/* navigations.
+                e.preventDefault();
+                window.location.assign('/cockpit/');
+              }}
               aria-label="Apri Cockpit HUD"
               title="🛸 Cockpit HUD — plancia di comando per i 25+ progetti"
               className="focus-accent rounded-md p-2 text-muted-fg hover:text-accent hover:bg-accent/10"
@@ -304,6 +310,10 @@ export default function App() {
             </a>
             <a
               href="/cockpit/remote/"
+              onClick={(e) => {
+                e.preventDefault();
+                window.location.assign('/cockpit/remote/');
+              }}
               aria-label="Apri Cockpit Remote (mobile/trackpad)"
               title="📱 Cockpit Remote — telecomando + trackpad + voice"
               className="focus-accent rounded-md p-2 text-muted-fg hover:text-accent hover:bg-accent/10 sm:hidden"
