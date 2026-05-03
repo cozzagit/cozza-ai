@@ -1,0 +1,28 @@
+{
+  "recommendations": [
+    "anthropic.claude-code",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss",
+    "vivaxy.vscode-conventional-commits",
+    "eamodio.gitlens",
+    "mhutchie.git-graph",
+    "usernamehw.errorlens",
+    "yoavbls.pretty-ts-errors",
+    "wallabyjs.console-ninja",
+    "vitest.explorer",
+    "rangav.vscode-thunder-client",
+    "alefragnani.project-manager",
+    "gruntfuggly.todo-tree",
+    "vsls-contrib.codetour",
+    "pkief.material-icon-theme",
+    "robbowen.synthwave-vscode",
+    "streetsidesoftware.code-spell-checker",
+    "ms-vscode.vscode-typescript-next",
+    "ms-vscode-remote.remote-ssh",
+    "ms-vscode.simple-browser",
+    "tamasfe.even-better-toml",
+    "redhat.vscode-yaml",
+    "github.vscode-github-actions"
+  ]
+}

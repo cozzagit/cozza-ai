@@ -1,0 +1,160 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+    background: #000;
+    color: #fff;
+    overscroll-behavior: none;
+  }
+  body {
+    font-family: 'Geist', system-ui, sans-serif;
+  }
+  ::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+}
+
+/* ─── Theme Cyberpunk ─────────────────────────────────────────── */
+.theme-cyberpunk {
+  --bg: #000;
+  --bg-soft: #0a0a0e;
+  --fg: #ffffff;
+  --muted: rgba(255, 255, 255, 0.55);
+  --accent: #00e5ff;
+  --magenta: #ff00aa;
+  --amber: #ffb300;
+}
+.theme-cyberpunk .surface {
+  background: linear-gradient(180deg, rgba(0, 229, 255, 0.04), rgba(255, 0, 170, 0.02));
+  border: 1px solid rgba(0, 229, 255, 0.18);
+  box-shadow:
+    0 0 24px rgba(0, 229, 255, 0.06),
+    inset 0 0 12px rgba(0, 229, 255, 0.04);
+  backdrop-filter: blur(6px);
+}
+.theme-cyberpunk .neon-border {
+  border: 1px solid rgba(0, 229, 255, 0.7);
+  box-shadow:
+    0 0 12px rgba(0, 229, 255, 0.4),
+    inset 0 0 12px rgba(0, 229, 255, 0.15);
+}
+.theme-cyberpunk .scanlines::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 229, 255, 0.03) 0px,
+    rgba(0, 229, 255, 0.03) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  pointer-events: none;
+}
+.theme-cyberpunk .grid-bg {
+  background-image:
+    linear-gradient(rgba(0, 229, 255, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 229, 255, 0.07) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
+}
+.theme-cyberpunk .display {
+  font-family: 'Orbitron', 'Geist Mono', monospace;
+  letter-spacing: 0.05em;
+}
+.theme-cyberpunk .glow-cyan {
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.7);
+}
+.theme-cyberpunk .glow-magenta {
+  text-shadow: 0 0 8px rgba(255, 0, 170, 0.7);
+}
+
+/* ─── Theme Bauhaus ───────────────────────────────────────────── */
+.theme-bauhaus {
+  --bg: #ffffff;
+  --bg-soft: #f4f4f0;
+  --fg: #0a0a0a;
+  --muted: rgba(10, 10, 10, 0.55);
+  --accent: #e63946;
+}
+.theme-bauhaus {
+  background: #ffffff;
+  color: #0a0a0a;
+}
+.theme-bauhaus .surface {
+  background: #ffffff;
+  border: 2px solid #0a0a0a;
+  box-shadow: 6px 6px 0 #0a0a0a;
+}
+.theme-bauhaus .neon-border {
+  border: 2px solid #0a0a0a;
+}
+.theme-bauhaus .display {
+  font-family: 'Geist', 'Inter', system-ui, sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+.theme-bauhaus .glow-cyan,
+.theme-bauhaus .glow-magenta {
+  text-shadow: none;
+}
+.theme-bauhaus .grid-bg {
+  background: none;
+}
+.theme-bauhaus .scanlines::before {
+  display: none;
+}
+
+/* health pill, theme-aware via CSS vars */
+.pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-family: 'Geist Mono', monospace;
+}
+.pill-ok {
+  color: #00e5ff;
+  border: 1px solid #00e5ff;
+}
+.pill-warn {
+  color: #ffb300;
+  border: 1px solid #ffb300;
+}
+.pill-down {
+  color: #ff3366;
+  border: 1px solid #ff3366;
+}
+.pill-unknown {
+  color: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.theme-bauhaus .pill-ok {
+  color: #0a0a0a;
+  border-color: #0a0a0a;
+  background: #b7f4a2;
+}
+.theme-bauhaus .pill-warn {
+  color: #0a0a0a;
+  border-color: #0a0a0a;
+  background: #ffd166;
+}
+.theme-bauhaus .pill-down {
+  color: #ffffff;
+  border-color: #0a0a0a;
+  background: #e63946;
+}
+.theme-bauhaus .pill-unknown {
+  color: #0a0a0a;
+  border-color: #0a0a0a;
+  background: #e5e5e5;
+}

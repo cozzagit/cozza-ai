@@ -1,0 +1,184 @@
+import { useEffect, useState } from 'react';
+import { useCockpitStore, type HudMode, type ThemeId } from './store';
+import { useCockpitBus, type CockpitEvent } from './bus';
+import { Vitals } from './modes/Vitals';
+import { Stream } from './modes/Stream';
+import { Logs } from './modes/Logs';
+import { Metrics } from './modes/Metrics';
+import { Ambient } from './modes/Ambient';
+import { Diff } from './modes/Diff';
+
+const MODES: { id: HudMode; label: string; icon: string }[] = [
+  { id: 'vitals', label: 'Vitals', icon: '◉' },
+  { id: 'stream', label: 'Stream', icon: '⟴' },
+  { id: 'logs', label: 'Logs', icon: '☰' },
+  { id: 'diff', label: 'Diff', icon: '⟷' },
+  { id: 'metrics', label: 'Metrics', icon: '∿' },
+  { id: 'ambient', label: 'Ambient', icon: '◐' },
+];
+
+export function App() {
+  const theme = useCockpitStore((s) => s.theme);
+  const mode = useCockpitStore((s) => s.mode);
+  const setMode = useCockpitStore((s) => s.setMode);
+  const token = useCockpitStore((s) => s.token);
+  const setToken = useCockpitStore((s) => s.setToken);
+  const toggleTheme = useCockpitStore((s) => s.toggleTheme);
+
+  const { connected, events, error } = useCockpitBus(500);
+
+  // Theme class on <html>
+  useEffect(() => {
+    document.documentElement.classList.remove('theme-cyberpunk', 'theme-bauhaus');
+    document.documentElement.classList.add(`theme-${theme}`);
+  }, [theme]);
+
+  // Keyboard shortcuts: t = theme, 1..6 = mode
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === 't' || e.key === 'T') toggleTheme();
+      const idx = Number.parseInt(e.key, 10);
+      if (!Number.isNaN(idx) && idx >= 1 && idx <= MODES.length) {
+        const next = MODES[idx - 1];
+        if (next) setMode(next.id);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [toggleTheme, setMode]);
+
+  if (!token) return <TokenPrompt onSubmit={setToken} />;
+
+  return (
+    <div className="min-h-screen relative grid-bg scanlines overflow-hidden">
+      <Header connected={connected} error={error} theme={theme} />
+      <ModeSwitcher current={mode} onChange={setMode} />
+      <main className="px-6 pb-6 pt-4 max-w-[1600px] mx-auto">
+        {mode === 'vitals' && <Vitals events={events} />}
+        {mode === 'stream' && <Stream events={events} />}
+        {mode === 'logs' && <Logs events={events} />}
+        {mode === 'diff' && <Diff events={events} />}
+        {mode === 'metrics' && <Metrics events={events} />}
+        {mode === 'ambient' && <Ambient />}
+      </main>
+    </div>
+  );
+}
+
+function Header({
+  connected,
+  error,
+  theme,
+}: {
+  connected: boolean;
+  error: string | null;
+  theme: ThemeId;
+}) {
+  const time = useNow();
+  return (
+    <header className="px-6 pt-4 pb-3 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <div className="display text-xl glow-cyan">🛸 COZZA · COCKPIT</div>
+        <span className="text-xs opacity-60 font-mono">v0.1</span>
+      </div>
+      <div className="flex items-center gap-3 font-mono text-xs">
+        <span className={connected ? 'pill pill-ok' : 'pill pill-down'}>
+          {connected ? '● online' : (error ?? '○ offline')}
+        </span>
+        <span className="opacity-70">{time}</span>
+        <button
+          type="button"
+          onClick={() => useCockpitStore.getState().toggleTheme()}
+          className="pill pill-unknown hover:opacity-80"
+          title="Cambia tema (t)"
+        >
+          {theme === 'cyberpunk' ? '⚪ Bauhaus' : '🌆 Cyber'}
+        </button>
+      </div>
+    </header>
+  );
+}
+
+function ModeSwitcher({ current, onChange }: { current: HudMode; onChange: (m: HudMode) => void }) {
+  return (
+    <nav className="px-6 pb-3 overflow-x-auto">
+      <div className="flex gap-2">
+        {MODES.map((m, i) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => onChange(m.id)}
+            className={[
+              'px-4 py-2 rounded-md text-sm font-mono uppercase tracking-wider transition-colors',
+              current === m.id ? 'neon-border glow-cyan' : 'opacity-60 hover:opacity-100',
+            ].join(' ')}
+            title={`Tasto ${i + 1}`}
+          >
+            <span className="mr-2">{m.icon}</span>
+            {m.label}
+          </button>
+        ))}
+      </div>
+    </nav>
+  );
+}
+
+function TokenPrompt({ onSubmit }: { onSubmit: (t: string) => void }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-6 grid-bg scanlines">
+      <form
+        className="surface rounded-xl p-6 max-w-md w-full space-y-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const f = new FormData(e.currentTarget);
+          const t = (f.get('token') ?? '') as string;
+          if (t.trim()) onSubmit(t.trim());
+        }}
+      >
+        <h1 className="display text-2xl glow-cyan">🛸 Cozza Cockpit HUD</h1>
+        <p className="text-sm opacity-70">
+          Incolla il <strong>token JWT</strong> emesso da <code>cockpit-bus</code> (POST{' '}
+          <code>/auth/token</code>) per connetterti.
+        </p>
+        <input
+          name="token"
+          type="password"
+          autoComplete="off"
+          placeholder="JWT token…"
+          className="w-full bg-black/40 border border-current/20 rounded-md px-3 py-2 font-mono text-sm outline-none focus:border-current"
+        />
+        <button
+          type="submit"
+          className="w-full neon-border rounded-md px-4 py-2 text-sm font-mono uppercase tracking-wider hover:opacity-80"
+        >
+          Connetti
+        </button>
+        <p className="text-[10px] opacity-50 font-mono">
+          Esempio dev:
+          <br />
+          <code className="break-all">
+            {`curl -X POST http://localhost:3030/auth/token -H 'content-type: application/json' -d '{"pin":"YOUR_PIN"}'`}
+          </code>
+        </p>
+      </form>
+    </div>
+  );
+}
+
+function useNow(): string {
+  const fmt = (): string =>
+    new Date().toLocaleTimeString('it-IT', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  const [now, setNow] = useState(fmt);
+  useEffect(() => {
+    const t = setInterval(() => setNow(fmt()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return now;
+}
+
+export type { CockpitEvent };

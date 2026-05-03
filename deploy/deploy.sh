@@ -86,6 +86,16 @@ VITE_API_BASE_URL="" VITE_BUILD_COMMIT="$COMMIT_SHA" pnpm --filter web build
 echo "▶ Build api bundle"
 pnpm --filter api build
 
+# Cockpit HUD + Remote: optional, only build if the workspaces exist
+if [ -f apps/cockpit-hud/package.json ]; then
+  echo "▶ Build cockpit-hud bundle"
+  pnpm --filter cockpit-hud build || echo "  ⚠ cockpit-hud build failed, continuing"
+fi
+if [ -f apps/cockpit-remote/package.json ]; then
+  echo "▶ Build cockpit-remote bundle"
+  pnpm --filter cockpit-remote build || echo "  ⚠ cockpit-remote build failed, continuing"
+fi
+
 echo "▶ Verify no secret leak in web bundle"
 if grep -rE '(sk-(ant|proj)-|xi-api-key|sk_[a-zA-Z0-9]{20,})' apps/web/dist >/dev/null 2>&1; then
   echo "  ✗ FATAL: secret leaked into apps/web/dist — abort" >&2

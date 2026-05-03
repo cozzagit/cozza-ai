@@ -1,0 +1,122 @@
+{
+  "Hono route + Zod validate": {
+    "scope": "typescript",
+    "prefix": "cozza-hono-route",
+    "description": "Hono route con Zod validate body, error envelope cozza-style",
+    "body": [
+      "import { Hono } from 'hono';",
+      "import { z } from 'zod';",
+      "import { validateBody, getValidated } from '@/middleware/validate';",
+      "",
+      "const ${1:Body}Schema = z.object({",
+      "  ${2:field}: z.string().min(1).max(${3:200}),",
+      "});",
+      "type ${1:Body}Payload = z.infer<typeof ${1:Body}Schema>;",
+      "",
+      "export const ${4:routeName}Routes = new Hono();",
+      "",
+      "${4:routeName}Routes.post('/', validateBody(${1:Body}Schema), async (c) => {",
+      "  const body = getValidated<${1:Body}Payload>(c);",
+      "  $0",
+      "  return c.json({ data: { ok: true } });",
+      "});",
+      ""
+    ]
+  },
+  "Zustand store + persist + migrate": {
+    "scope": "typescript",
+    "prefix": "cozza-zustand",
+    "description": "Zustand store con persist e migrazione versionata",
+    "body": [
+      "import { create } from 'zustand';",
+      "import { persist } from 'zustand/middleware';",
+      "",
+      "interface ${1:Store}State {",
+      "  ${2:value}: ${3:string};",
+      "  set${2/(.*)/${1:/capitalize}/}: (v: ${3:string}) => void;",
+      "}",
+      "",
+      "export const use${1:Store}Store = create<${1:Store}State>()(",
+      "  persist(",
+      "    (set) => ({",
+      "      ${2:value}: ${4:''},",
+      "      set${2/(.*)/${1:/capitalize}/}: (v) => set({ ${2:value}: v }),",
+      "    }),",
+      "    {",
+      "      name: 'cozza-${1/(.*)/${1:/downcase}/}',",
+      "      version: 1,",
+      "    },",
+      "  ),",
+      ");",
+      ""
+    ]
+  },
+  "React component (cozza-style)": {
+    "scope": "typescriptreact",
+    "prefix": "cozza-component",
+    "description": "Componente React tipizzato con Tailwind glass-surface",
+    "body": [
+      "interface ${1:Component}Props {",
+      "  ${2:children}: React.ReactNode;",
+      "}",
+      "",
+      "export function ${1:Component}({ ${2:children} }: ${1:Component}Props) {",
+      "  return (",
+      "    <div className=\"glass-surface rounded-xl p-4\">",
+      "      {${2:children}}",
+      "    </div>",
+      "  );",
+      "}",
+      ""
+    ]
+  },
+  "useTts hook usage": {
+    "scope": "typescript,typescriptreact",
+    "prefix": "cozza-tts",
+    "description": "Inline useTts con override per voice settings",
+    "body": [
+      "const { speak, stop, isPlaying } = useTts({",
+      "  voiceId,",
+      "  enabled: ttsAutoplay && Boolean(voiceId),",
+      "  voiceSettings: useSettingsStore((s) => s.voiceSettingsByVoice[voiceId] ?? {}),",
+      "});"
+    ]
+  },
+  "Cockpit event log": {
+    "scope": "typescript,typescriptreact",
+    "prefix": "cozza-cockpit-emit",
+    "description": "Emette evento al cockpit-bus",
+    "body": [
+      "cockpitBus.emit({",
+      "  type: '${1|health,build,claude,log,git,metric,input|}',",
+      "  ${2:project}: '${3:cozza-ai}',",
+      "  $0",
+      "});"
+    ]
+  },
+  "Drizzle table soft-delete": {
+    "scope": "typescript",
+    "prefix": "cozza-drizzle-table",
+    "description": "Drizzle table con created_at, updated_at, deleted_at",
+    "body": [
+      "import { pgTable, uuid, timestamp, text } from 'drizzle-orm/pg-core';",
+      "",
+      "export const ${1:tableName} = pgTable('${1:tableName}', {",
+      "  id: uuid('id').primaryKey().defaultRandom(),",
+      "  ${2:name}: text('${2:name}').notNull(),",
+      "  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),",
+      "  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),",
+      "  deletedAt: timestamp('deleted_at', { withTimezone: true }),",
+      "});",
+      ""
+    ]
+  },
+  "Cockpit log structured": {
+    "scope": "typescript,typescriptreact",
+    "prefix": "cozza-log",
+    "description": "Log strutturato cozza-ai style",
+    "body": [
+      "log.${1|info,warn,error|}('${2:scope}', '${3:event}', { ${4:context} });"
+    ]
+  }
+}

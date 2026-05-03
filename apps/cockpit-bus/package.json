@@ -1,0 +1,33 @@
+{
+  "name": "cockpit-bus",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --inspect=9230 src/index.ts",
+    "build": "rimraf dist && tsc && tsc-alias --resolve-full-paths",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0"
+  },
+  "dependencies": {
+    "@cozza/shared": "workspace:*",
+    "@hono/node-server": "^1.13.7",
+    "better-sqlite3": "^11.3.0",
+    "chokidar": "^4.0.1",
+    "dotenv": "^16.4.5",
+    "hono": "^4.6.5",
+    "jose": "^5.9.6",
+    "ws": "^8.18.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^22.7.5",
+    "@types/ws": "^8.5.13",
+    "rimraf": "^6.0.1",
+    "tsc-alias": "^1.8.10",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3"
+  }
+}

@@ -36,11 +36,24 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Editor
-.vscode/
+# Editor — track shared cockpit config, ignore personal overrides
+.vscode/*
 !.vscode/extensions.json
 !.vscode/settings.example.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/cozza.code-snippets
 .idea/
+
+# Cockpit local data
+apps/cockpit-bus/cockpit.db
+apps/cockpit-bus/cockpit.db-*
+apps/cockpit-bus/*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
 *.swp
 *.swo
 

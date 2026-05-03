@@ -1,0 +1,222 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "🚀 cockpit:up",
+      "detail": "Lancia tutto il cockpit in parallelo: web, api, bus, hud, remote, tail VPS, terminale Claude.",
+      "dependsOrder": "parallel",
+      "dependsOn": [
+        "web:dev",
+        "api:dev",
+        "bus:dev",
+        "hud:dev",
+        "remote:dev",
+        "vps:tail",
+        "claude:idle"
+      ],
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": {
+        "panel": "dedicated",
+        "group": "cockpit",
+        "echo": false,
+        "showReuseMessage": false,
+        "clear": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🛑 cockpit:down",
+      "detail": "Termina tutti i terminali del cockpit (chiude i task in background).",
+      "type": "shell",
+      "command": "echo",
+      "args": [
+        "Usa Ctrl+Shift+P → 'Tasks: Terminate Task' → seleziona tutti, oppure killa col tasto cestino del Terminal."
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "web:dev",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["--filter", "web", "dev"],
+      "options": { "cwd": "${workspaceFolder:🛸 cozza-ai}" },
+      "isBackground": true,
+      "presentation": {
+        "panel": "dedicated",
+        "group": "cockpit-fe",
+        "echo": false,
+        "reveal": "always"
+      },
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": [{ "regexp": "^(.*)$", "file": 1, "location": 1, "message": 1 }],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*",
+          "endsPattern": "ready in"
+        }
+      }
+    },
+    {
+      "label": "api:dev",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["--filter", "api", "dev"],
+      "options": { "cwd": "${workspaceFolder:🛸 cozza-ai}" },
+      "isBackground": true,
+      "presentation": {
+        "panel": "dedicated",
+        "group": "cockpit-fe",
+        "echo": false,
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "bus:dev",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["--filter", "cockpit-bus", "dev"],
+      "options": { "cwd": "${workspaceFolder:🛸 cozza-ai}" },
+      "isBackground": true,
+      "presentation": {
+        "panel": "dedicated",
+        "group": "cockpit-bus",
+        "echo": false,
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "hud:dev",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["--filter", "cockpit-hud", "dev"],
+      "options": { "cwd": "${workspaceFolder:🛸 cozza-ai}" },
+      "isBackground": true,
+      "presentation": {
+        "panel": "dedicated",
+        "group": "cockpit-bus",
+        "echo": false,
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "remote:dev",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["--filter", "cockpit-remote", "dev"],
+      "options": { "cwd": "${workspaceFolder:🛸 cozza-ai}" },
+      "isBackground": true,
+      "presentation": {
+        "panel": "dedicated",
+        "group": "cockpit-mobile",
+        "echo": false,
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "vps:tail",
+      "type": "shell",
+      "command": "ssh",
+      "args": [
+        "-i",
+        "${env:USERPROFILE}/.ssh/aruba_vps",
+        "root@188.213.170.214",
+        "pm2 logs cozza-ai-api --lines 50"
+      ],
+      "isBackground": true,
+      "presentation": {
+        "panel": "dedicated",
+        "group": "cockpit-ops",
+        "echo": false,
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "claude:idle",
+      "detail": "Terminale dedicato a `claude` interactive.",
+      "type": "shell",
+      "command": "echo",
+      "args": ["Lancia 'claude' qui per Claude Code interactive."],
+      "isBackground": true,
+      "presentation": {
+        "panel": "dedicated",
+        "group": "cockpit-ai",
+        "echo": false,
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "🧪 typecheck",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["typecheck"],
+      "options": { "cwd": "${workspaceFolder:🛸 cozza-ai}" },
+      "presentation": { "panel": "dedicated", "group": "qa", "echo": false },
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "🧹 lint",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["lint"],
+      "options": { "cwd": "${workspaceFolder:🛸 cozza-ai}" },
+      "presentation": { "panel": "dedicated", "group": "qa", "echo": false },
+      "problemMatcher": ["$eslint-stylish"]
+    },
+    {
+      "label": "🚢 deploy:vps",
+      "detail": "Deploy cozza-ai su Aruba VPS (commit + push, poi build remoto).",
+      "type": "shell",
+      "command": "bash",
+      "args": ["deploy/deploy.sh"],
+      "options": { "cwd": "${workspaceFolder:🛸 cozza-ai}" },
+      "presentation": { "panel": "dedicated", "group": "ops", "reveal": "always" },
+      "problemMatcher": []
+    },
+    {
+      "label": "🌐 open:web",
+      "type": "shell",
+      "command": "code",
+      "args": ["--command", "simpleBrowser.show", "http://localhost:5173"],
+      "presentation": { "panel": "shared", "echo": false, "close": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "🛸 open:hud",
+      "type": "shell",
+      "command": "code",
+      "args": ["--command", "simpleBrowser.show", "http://localhost:5174"],
+      "presentation": { "panel": "shared", "echo": false, "close": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "📱 open:remote",
+      "type": "shell",
+      "command": "code",
+      "args": ["--command", "simpleBrowser.show", "http://localhost:5175"],
+      "presentation": { "panel": "shared", "echo": false, "close": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "🔌 tunnel:up",
+      "detail": "Apre il tunnel SSH inverso PC↔VPS (cockpit-bus exposed via cozza-ai.vibecanyon.com/cockpit/).",
+      "type": "shell",
+      "command": "powershell",
+      "args": ["-File", "scripts/tunnel.ps1"],
+      "options": { "cwd": "${workspaceFolder:🛸 cozza-ai}" },
+      "isBackground": true,
+      "presentation": {
+        "panel": "dedicated",
+        "group": "cockpit-ops",
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

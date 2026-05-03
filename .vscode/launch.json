@@ -1,0 +1,62 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "🐛 Debug Web (Chrome attach)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder:🛸 cozza-ai}/apps/web/src",
+      "sourceMaps": true,
+      "userDataDir": false
+    },
+    {
+      "name": "🐛 Debug API (Hono Node)",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "restart": true,
+      "outFiles": ["${workspaceFolder:🛸 cozza-ai}/apps/api/dist/**/*.js"]
+    },
+    {
+      "name": "🐛 Debug Cockpit Bus",
+      "type": "node",
+      "request": "attach",
+      "port": 9230,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "restart": true,
+      "outFiles": ["${workspaceFolder:🛸 cozza-ai}/apps/cockpit-bus/dist/**/*.js"]
+    },
+    {
+      "name": "🐛 Debug HUD (Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5174",
+      "webRoot": "${workspaceFolder:🛸 cozza-ai}/apps/cockpit-hud/src",
+      "sourceMaps": true,
+      "userDataDir": false
+    },
+    {
+      "name": "🐛 Debug Remote (Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5175",
+      "webRoot": "${workspaceFolder:🛸 cozza-ai}/apps/cockpit-remote/src",
+      "sourceMaps": true,
+      "userDataDir": false
+    }
+  ],
+  "compounds": [
+    {
+      "name": "🛸 Cockpit Full Debug",
+      "configurations": [
+        "🐛 Debug Web (Chrome attach)",
+        "🐛 Debug API (Hono Node)",
+        "🐛 Debug Cockpit Bus",
+        "🐛 Debug HUD (Chrome)"
+      ],
+      "stopAll": true
+    }
+  ]
+}

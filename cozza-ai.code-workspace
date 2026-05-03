@@ -1,0 +1,101 @@
+{
+  "folders": [
+    { "name": "🛸 cozza-ai", "path": "." },
+    { "name": "🌐 web", "path": "apps/web" },
+    { "name": "⚙ api", "path": "apps/api" },
+    { "name": "🎛 cockpit-bus", "path": "apps/cockpit-bus" },
+    { "name": "👁 cockpit-hud", "path": "apps/cockpit-hud" },
+    { "name": "📱 cockpit-remote", "path": "apps/cockpit-remote" },
+    { "name": "📦 shared", "path": "packages/shared" },
+    { "name": "🚀 deploy", "path": "deploy" },
+    { "name": "📚 docs", "path": "docs" }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/.turbo": true,
+      "**/.next": true,
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/.vite": true
+    },
+    "search.exclude": {
+      "**/dist": true,
+      "**/node_modules": true,
+      "**/pnpm-lock.yaml": true,
+      "**/.vite": true
+    },
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+    "[typescriptreact]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+    "[javascript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+    "[json]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+    "[jsonc]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+    "typescript.tsdk": "cozza-ai/node_modules/typescript/lib",
+    "typescript.preferences.importModuleSpecifier": "non-relative",
+    "errorLens.enabledDiagnosticLevels": ["error", "warning"],
+    "workbench.colorTheme": "Synthwave '84",
+    "workbench.iconTheme": "material-icon-theme",
+    "editor.fontFamily": "'Geist Mono', 'JetBrains Mono', Menlo, Consolas, monospace",
+    "editor.fontLigatures": true,
+    "editor.fontSize": 13,
+    "editor.lineHeight": 1.6,
+    "editor.cursorBlinking": "smooth",
+    "editor.cursorSmoothCaretAnimation": "on",
+    "editor.smoothScrolling": true,
+    "workbench.list.smoothScrolling": true,
+    "terminal.integrated.smoothScrolling": true,
+    "terminal.integrated.fontFamily": "'Geist Mono', 'JetBrains Mono', monospace",
+    "terminal.integrated.fontSize": 12,
+    "terminal.integrated.cursorBlinking": true,
+    "terminal.integrated.gpuAcceleration": "on",
+    "window.titleBarStyle": "custom",
+    "window.commandCenter": true,
+    "explorer.compactFolders": false,
+    "explorer.fileNesting.enabled": true,
+    "explorer.fileNesting.expand": false,
+    "explorer.fileNesting.patterns": {
+      "*.ts": "${capture}.test.ts, ${capture}.spec.ts",
+      "*.tsx": "${capture}.test.tsx, ${capture}.spec.tsx",
+      "package.json": "pnpm-lock.yaml, pnpm-workspace.yaml, .npmrc, tsconfig*.json, .eslintrc*, .prettierrc*, .gitignore, .editorconfig, README.md",
+      "vite.config.*": "tsconfig*.json, postcss.config.*, tailwind.config.*"
+    },
+    "git.openRepositoryInParentFolders": "always",
+    "git.autofetch": true,
+    "git.confirmSync": false,
+    "diffEditor.renderSideBySide": true,
+    "tailwindCSS.includeLanguages": { "typescript": "javascript", "typescriptreact": "javascript" },
+    "eslint.workingDirectories": [
+      { "pattern": "apps/*" },
+      { "pattern": "packages/*" }
+    ]
+  },
+  "extensions": {
+    "recommendations": [
+      "anthropic.claude-code",
+      "dbaeumer.vscode-eslint",
+      "esbenp.prettier-vscode",
+      "bradlc.vscode-tailwindcss",
+      "vivaxy.vscode-conventional-commits",
+      "eamodio.gitlens",
+      "mhutchie.git-graph",
+      "usernamehw.errorlens",
+      "yoavbls.pretty-ts-errors",
+      "wallabyjs.console-ninja",
+      "vitest.explorer",
+      "rangav.vscode-thunder-client",
+      "alefragnani.project-manager",
+      "gruntfuggly.todo-tree",
+      "vsls-contrib.codetour",
+      "pkief.material-icon-theme",
+      "robbowen.synthwave-vscode",
+      "streetsidesoftware.code-spell-checker",
+      "ms-vscode.vscode-typescript-next",
+      "ms-vscode-remote.remote-ssh",
+      "ms-vscode.simple-browser",
+      "tamasfe.even-better-toml",
+      "redhat.vscode-yaml",
+      "github.vscode-github-actions"
+    ]
+  }
+}

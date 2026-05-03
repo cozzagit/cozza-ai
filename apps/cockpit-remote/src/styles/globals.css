@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+    background: #000;
+    color: #fff;
+    overscroll-behavior: contain;
+    touch-action: none; /* trackpad area handles its own gestures */
+  }
+  body {
+    font-family: 'Geist', system-ui, sans-serif;
+  }
+  ::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+  button {
+    min-height: 48px;
+  }
+}
+
+.surface {
+  background: linear-gradient(180deg, rgba(0, 229, 255, 0.03), rgba(255, 255, 255, 0.01));
+  border: 1px solid rgba(0, 229, 255, 0.18);
+}
+.glow-cyan {
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.7);
+}
+.display {
+  font-family: 'Orbitron', 'Geist Mono', monospace;
+  letter-spacing: 0.05em;
+}
+
+.pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-family: 'Geist Mono', monospace;
+}
+.pill-ok {
+  color: #00e5ff;
+  border: 1px solid #00e5ff;
+}
+.pill-warn {
+  color: #ffb300;
+  border: 1px solid #ffb300;
+}
+.pill-down {
+  color: #ff3366;
+  border: 1px solid #ff3366;
+}
+.pill-unknown {
+  color: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
