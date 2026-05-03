@@ -12,6 +12,21 @@ import { Spend } from './modes/Spend';
 import { Devstation } from './modes/Devstation';
 import { PointerOverlay } from './PointerOverlay';
 
+/**
+ * App presets reachable from voice / Pixel ("ehi cozza, metti netflix").
+ * `drm: true` means the site refuses to be iframed — we open it in a
+ * new full-screen tab. Embed-friendly sites load inside Devstation.
+ */
+const APP_PRESETS: Record<string, { url: string; drm: boolean; label: string }> = {
+  netflix: { url: 'https://www.netflix.com', drm: true, label: 'Netflix' },
+  dazn: { url: 'https://www.dazn.com/it-IT/home', drm: true, label: 'DAZN' },
+  prime: { url: 'https://www.primevideo.com', drm: true, label: 'Prime Video' },
+  disney: { url: 'https://www.disneyplus.com', drm: true, label: 'Disney+' },
+  spotify: { url: 'https://open.spotify.com', drm: false, label: 'Spotify' },
+  youtube: { url: 'https://www.youtube.com', drm: false, label: 'YouTube' },
+  twitch: { url: 'https://www.twitch.tv', drm: false, label: 'Twitch' },
+};
+
 const MODES: { id: HudMode; label: string; icon: string }[] = [
   { id: 'devstation', label: 'Devstation', icon: '💻' },
   { id: 'vitals', label: 'Vitals', icon: '◉' },
@@ -43,7 +58,7 @@ export function App() {
     }
   }, [token, setToken]);
 
-  const { connected, events, error } = useCockpitBus(500);
+  const { connected, events, error, send } = useCockpitBus(500);
 
   // React to remote `command` events — this is how Pixel/voice tells the HUD
   // to switch mode, change theme, etc. We dedupe by id and process the most
@@ -66,8 +81,36 @@ export function App() {
       toggleTheme();
     } else if (command === 'hud.setTheme' && typeof args.theme === 'string') {
       useCockpitStore.getState().setTheme(args.theme as ThemeId);
+    } else if (command === 'app.open') {
+      const preset = String(args.preset ?? '');
+      const url = String(args.url ?? '');
+      const target = APP_PRESETS[preset]?.url ?? url;
+      if (!target) return;
+      const drm = APP_PRESETS[preset]?.drm ?? false;
+      if (drm) {
+        // X-Frame-Options DENY on Netflix/DAZN/Prime/Disney → open in
+        // new tab; the user navigates with native browser controls.
+        window.open(target, '_blank', 'noopener,noreferrer');
+      } else {
+        // Embed-friendly: switch to Devstation single-cell with the
+        // app URL as the only slot, full immersion.
+        try {
+          localStorage.setItem('cozza-devstation-layout', JSON.stringify('single'));
+          localStorage.setItem('cozza-devstation-slots', JSON.stringify({ 0: 'custom:' + target }));
+        } catch {
+          // ignore storage failures
+        }
+        setMode('devstation');
+      }
+      // Tell the Pixel to switch to D-pad — TV-style apps respond well
+      // to arrow navigation. If the user wants the trackpad cursor,
+      // they can switch back manually.
+      broadcast(send, 'remote', 'remote.setMode', { mode: 'dpad' });
+    } else if (command === 'app.close') {
+      setMode('vitals');
+      broadcast(send, 'remote', 'remote.setMode', { mode: 'home' });
     }
-  }, [events, setMode, toggleTheme]);
+  }, [events, setMode, toggleTheme, send]);
 
   // Theme class on <html>
   useEffect(() => {
@@ -236,3 +279,22 @@ function useNow(): string {
 }
 
 export type { CockpitEvent };
+
+/**
+ * Re-broadcasts a command via the cockpit-bus WebSocket. Used by the
+ * HUD to follow up on its own command handlers (e.g. after opening an
+ * app, also tell the Remote to switch input mode).
+ */
+function broadcast(
+  send: (frame: Record<string, unknown>) => void,
+  target: 'hud' | 'desktop' | 'remote' | 'all',
+  command: string,
+  args?: Record<string, unknown>,
+): void {
+  send({
+    kind: 'broadcast',
+    target,
+    command,
+    ...(args ? { args } : {}),
+  });
+}

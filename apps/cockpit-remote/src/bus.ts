@@ -2,7 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import { useRemoteStore } from './store';
 
 export interface CockpitEvent {
-  type: 'health' | 'build' | 'claude' | 'log' | 'git' | 'metric' | 'quota' | 'input';
+  type:
+    | 'health'
+    | 'build'
+    | 'claude'
+    | 'log'
+    | 'git'
+    | 'metric'
+    | 'quota'
+    | 'input'
+    | 'command'
+    | 'handoff';
   ts: number;
   project?: string;
   [k: string]: unknown;

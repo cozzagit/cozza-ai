@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRemoteStore, type RemoteMode } from './store';
 import { useCockpitBus, type CockpitEvent } from './bus';
 import { Trackpad } from './Trackpad';
@@ -24,6 +24,26 @@ export function App() {
   useEffect(() => {
     document.documentElement.classList.add('theme-cyberpunk');
   }, []);
+
+  // Auto-switch when the cockpit broadcasts a remote.setMode command.
+  // Triggered by "ehi cozza metti netflix" → HUD opens the app and tells
+  // the Pixel to switch to the right input mode (D-pad for TV-like UIs).
+  const lastCmdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const cmd = events.find((e) => e.type === 'command');
+    if (!cmd) return;
+    const id = String(cmd.id ?? '');
+    if (!id || id === lastCmdRef.current) return;
+    const target = String(cmd.target ?? 'all');
+    if (target !== 'all' && target !== 'remote') return;
+    lastCmdRef.current = id;
+    const command = String(cmd.command ?? '');
+    const args = (cmd.args ?? {}) as Record<string, unknown>;
+    if (command === 'remote.setMode' && typeof args.mode === 'string') {
+      setMode(args.mode as RemoteMode);
+      vibrate(10);
+    }
+  }, [events, setMode, vibrate]);
 
   if (!token) return <TokenPrompt onSubmit={setToken} />;
 
