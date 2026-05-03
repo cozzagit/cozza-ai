@@ -11,10 +11,7 @@ ttsRoutes.post('/', validateBody(TtsRequestSchema), async (c) => {
   const body = getValidated<TtsRequest>(c);
 
   if (!cfg.ELEVENLABS_API_KEY) {
-    return c.json(
-      { error: { code: 'MISCONFIGURED', message: 'missing elevenlabs api key' } },
-      500,
-    );
+    return c.json({ error: { code: 'MISCONFIGURED', message: 'missing elevenlabs api key' } }, 500);
   }
 
   console.warn(
@@ -26,6 +23,7 @@ ttsRoutes.post('/', validateBody(TtsRequestSchema), async (c) => {
     text: body.text,
     voiceId: body.voiceId,
     ...(body.modelId ? { modelId: body.modelId } : {}),
+    ...(body.settings ? { settings: body.settings } : {}),
   });
 
   if (!upstream.ok || !upstream.body) {

@@ -1,4 +1,11 @@
-import type { ChatRequest, ChatStreamEvent, TtsRequest } from '@cozza/shared';
+import type {
+  ChatRequest,
+  ChatStreamEvent,
+  TtsRequest,
+  VoiceSettingsOverride,
+} from '@cozza/shared';
+
+export type { VoiceSettingsOverride };
 
 // Empty string = same-origin (relative `/api/...`). In dev, vite proxies /api → :3025.
 // In prod (nginx subdomain) same-origin works directly.

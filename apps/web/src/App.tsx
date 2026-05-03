@@ -38,6 +38,7 @@ export default function App() {
   const ttsAutoplay = useSettingsStore((s) => s.ttsAutoplay);
   const setTtsAutoplay = useSettingsStore((s) => s.setTtsAutoplay);
   const voiceId = useSettingsStore((s) => s.voiceId);
+  const voiceSettingsOverride = useSettingsStore((s) => s.voiceSettingsOverride);
   const artifactsPanelOpen = useSettingsStore((s) => s.artifactsPanelOpen);
   const setArtifactsPanelOpen = useSettingsStore((s) => s.setArtifactsPanelOpen);
 
@@ -60,6 +61,7 @@ export default function App() {
   } = useTts({
     voiceId,
     enabled: ttsAutoplay && Boolean(voiceId),
+    voiceSettings: voiceSettingsOverride,
   });
   const [replayingMessageId, setReplayingMessageId] = useState<string | null>(null);
 

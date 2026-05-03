@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { ChatModel } from '@cozza/shared';
+import type { ChatModel, VoiceSettingsOverride } from '@cozza/shared';
 
 interface SettingsState {
   defaultModel: ChatModel;
@@ -13,6 +13,11 @@ interface SettingsState {
   temperature: number;
   artifactsPanelOpen: boolean;
   autoEnrichVisuals: boolean;
+  /** Per-voice override of ElevenLabs voice_settings. Empty = use the
+   *  voice's native saved settings (preserving custom tuning). */
+  voiceSettingsOverride: VoiceSettingsOverride;
+  /** Show only the curated short list of voices in admin/voices. */
+  voicesCuratedOnly: boolean;
   setDefaultModel: (m: ChatModel) => void;
   setVoiceEnabled: (v: boolean) => void;
   setTtsAutoplay: (v: boolean) => void;
@@ -23,6 +28,9 @@ interface SettingsState {
   setTemperature: (v: number) => void;
   setArtifactsPanelOpen: (v: boolean) => void;
   setAutoEnrichVisuals: (v: boolean) => void;
+  setVoiceSettingsOverride: (v: VoiceSettingsOverride) => void;
+  resetVoiceSettingsOverride: () => void;
+  setVoicesCuratedOnly: (v: boolean) => void;
 }
 
 const ENV_DEFAULT_MODEL =
@@ -191,6 +199,8 @@ export const useSettingsStore = create<SettingsState>()(
       temperature: 0.7,
       artifactsPanelOpen: false,
       autoEnrichVisuals: true,
+      voiceSettingsOverride: {},
+      voicesCuratedOnly: true,
       setDefaultModel: (m) => set({ defaultModel: m }),
       setVoiceEnabled: (v) => set({ voiceEnabled: v }),
       setTtsAutoplay: (v) => set({ ttsAutoplay: v }),
@@ -201,10 +211,13 @@ export const useSettingsStore = create<SettingsState>()(
       setTemperature: (v) => set({ temperature: v }),
       setArtifactsPanelOpen: (v) => set({ artifactsPanelOpen: v }),
       setAutoEnrichVisuals: (v) => set({ autoEnrichVisuals: v }),
+      setVoiceSettingsOverride: (v) => set({ voiceSettingsOverride: v }),
+      resetVoiceSettingsOverride: () => set({ voiceSettingsOverride: {} }),
+      setVoicesCuratedOnly: (v) => set({ voicesCuratedOnly: v }),
     }),
     {
       name: 'cozza-settings',
-      version: 11,
+      version: 12,
       migrate: (persisted, version) => {
         const state = persisted as Partial<SettingsState> | null;
         if (!state) return {};
@@ -301,6 +314,13 @@ Verranno renderizzati in un pannello visivo separato accanto al testo.`;
           if (state.defaultModel === 'gpt-4o-mini') {
             state.defaultModel = 'claude-haiku-4-5';
           }
+        }
+        // v11 → v12: voiceSettingsOverride (empty by default = honor the
+        // voice's native saved tuning) + voicesCuratedOnly (default true:
+        // hide the long premade list, keep only curated + user customs).
+        if (version < 12) {
+          state.voiceSettingsOverride = state.voiceSettingsOverride ?? {};
+          state.voicesCuratedOnly = state.voicesCuratedOnly ?? true;
         }
         return state;
       },

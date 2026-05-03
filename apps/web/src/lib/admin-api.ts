@@ -16,8 +16,18 @@ export interface AdminVoice {
   descriptive: string | null;
   description: string | null;
   isItalianNative: boolean;
+  /** True for cloned/generated/professional (user-created) voices. */
+  isCustom: boolean;
   previewUrl: string | null;
   category: string | null;
+}
+
+export interface AdminVoiceSettings {
+  stability: number | null;
+  similarityBoost: number | null;
+  style: number | null;
+  useSpeakerBoost: boolean | null;
+  speed: number | null;
 }
 
 export interface AdminInfo {
@@ -101,6 +111,18 @@ export async function fetchAdminVoices(): Promise<AdminVoice[]> {
   }
   const data = (await res.json()) as { voices: AdminVoice[] };
   return data.voices;
+}
+
+/**
+ * Fetch the voice's saved settings from ElevenLabs (user's custom tuning).
+ * Used by AdminSettings to pre-fill the parameter sliders.
+ */
+export async function fetchVoiceSettings(voiceId: string): Promise<AdminVoiceSettings> {
+  const res = await adminFetch(`/api/admin/voices/${encodeURIComponent(voiceId)}/settings`);
+  if (!res.ok) {
+    throw new AdminApiError(`voice settings ${res.status}`, res.status);
+  }
+  return (await res.json()) as AdminVoiceSettings;
 }
 
 export async function fetchVoicePreview(voiceId: string, text?: string): Promise<Blob> {
