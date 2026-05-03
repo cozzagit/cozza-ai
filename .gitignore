@@ -53,6 +53,7 @@ apps/cockpit-bus/*.db
 *.db-journal
 *.db-wal
 *.db-shm
+packages/cockpit-vscode/*.vsix
 
 *.swp
 *.swo
