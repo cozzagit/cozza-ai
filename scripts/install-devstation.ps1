@@ -1,127 +1,138 @@
 # scripts/install-devstation.ps1
-# Installa code-server (VS Code via browser) + ttyd (terminale via browser)
-# come servizi Windows, integrati nel tunnel SSH esistente del cockpit.
+# Sets up the Cozza Devstation as Windows Scheduled Tasks running in
+# the user's profile (so SSH keys, fnm, pnpm, npm globals all work).
 #
-# Una volta lanciato, sulle Viture (o qualsiasi browser) puoi aprire:
-#   https://cozza-ai.vibecanyon.com/cockpit/devstation
-# e avere VS Code + terminale + preview live del PC di casa, tutti
-# dietro auth JWT del cockpit-bus.
+# Why Scheduled Tasks instead of NSSM/services:
+#   - NSSM as LocalSystem can't read ~/.ssh and lacks the user PATH;
+#     fixing it requires saving the user password somewhere or using
+#     gMSA — overkill for a single-dev box.
+#   - Scheduled Tasks support "At logon" + "Highest privileges" and
+#     run inside the LUCA\lucap profile by default. Reboot-safe.
 #
-# Lancio una tantum (admin):
+# Run once as admin:
 #   pwsh -ExecutionPolicy Bypass -File ./scripts/install-devstation.ps1
 
 param(
-  [int]$CodePort = 8444,
-  [int]$TermPort = 7681
+  [string]$TaskUser = "$env:USERDOMAIN\$env:USERNAME"
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Log to file so elevated runs can be inspected
+$logFile = "$env:USERPROFILE\.config\cozza-cockpit\install.log"
+New-Item -ItemType Directory -Force -Path (Split-Path $logFile) | Out-Null
+Start-Transcript -Path $logFile -Append -Force | Out-Null
+
 Write-Host ""
-Write-Host "🛸 Cozza Devstation — installer" -ForegroundColor Cyan
+Write-Host "🛸 Cozza Devstation — installer (Scheduled Tasks)" -ForegroundColor Cyan
 Write-Host ""
 
-# 1. winget code-server install
-$cs = Get-Command code-server -ErrorAction SilentlyContinue
-if (-not $cs) {
-  Write-Host "▶ Installo code-server via winget" -ForegroundColor Green
-  winget install --id Coder.code-server --silent --accept-source-agreements --accept-package-agreements
-} else {
-  Write-Host "✓ code-server già presente: $($cs.Source)" -ForegroundColor DarkGray
+$identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+$principal = New-Object System.Security.Principal.WindowsPrincipal $identity
+if (-not $principal.IsInRole([System.Security.Principal.WindowsBuiltInRole]::Administrator)) {
+  Write-Warning "Lo script va lanciato come Administrator."
+  Stop-Transcript | Out-Null
+  exit 2
 }
 
-# 2. ttyd install via scoop (più rapido di winget per binari unsigned)
-$ttyd = Get-Command ttyd -ErrorAction SilentlyContinue
-if (-not $ttyd) {
-  $scoop = Get-Command scoop -ErrorAction SilentlyContinue
-  if (-not $scoop) {
-    Write-Host "▶ Installo scoop (necessario per ttyd)" -ForegroundColor Green
-    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
-    Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
-  }
-  Write-Host "▶ Installo ttyd via scoop" -ForegroundColor Green
-  scoop install ttyd
-} else {
-  Write-Host "✓ ttyd già presente: $($ttyd.Source)" -ForegroundColor DarkGray
+$repoRoot = Split-Path -Parent $PSScriptRoot
+$pwshExe = (Get-Command pwsh -ErrorAction SilentlyContinue)?.Source
+if (-not $pwshExe) { $pwshExe = "$env:ProgramFiles\PowerShell\7\pwsh.exe" }
+if (-not (Test-Path $pwshExe)) { throw "pwsh non trovato. Installa PowerShell 7." }
+
+$logDir = "$env:USERPROFILE\.config\cozza-cockpit"
+New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+
+# Build wrapper scripts that activate fnm + run the target command, with
+# stdout/stderr captured. The Scheduled Task launches pwsh on these.
+$busWrapper = Join-Path $logDir 'run-bus.ps1'
+@"
+`$ErrorActionPreference = 'Stop'
+Set-Location '$repoRoot'
+# Activate fnm so node + pnpm are on PATH
+`$fnmExe = "`$env:LOCALAPPDATA\Microsoft\WinGet\Packages\Schniz.fnm_Microsoft.Winget.Source_8wekyb3d8bbwe\fnm.exe"
+if (Test-Path `$fnmExe) {
+  `$env:PATH = "`$(Split-Path `$fnmExe);`$env:PATH"
+  fnm env --use-on-cd | Out-String | Invoke-Expression
+}
+Start-Transcript -Path '$logDir\bus.log' -Append -Force
+Write-Host "[bus] starting `$(Get-Date)"
+& pnpm --filter cockpit-bus dev
+"@ | Set-Content -Path $busWrapper -Encoding UTF8
+
+$tunnelWrapper = Join-Path $logDir 'run-tunnel.ps1'
+@"
+`$ErrorActionPreference = 'Continue'
+Set-Location '$repoRoot'
+Start-Transcript -Path '$logDir\tunnel.log' -Append -Force
+Write-Host "[tunnel] starting `$(Get-Date)"
+& '$repoRoot\scripts\tunnel.ps1'
+"@ | Set-Content -Path $tunnelWrapper -Encoding UTF8
+
+# Helper: register or update a scheduled task
+function Set-CockpitTask {
+  param([string]$Name, [string]$Wrapper, [string]$Description)
+  Unregister-ScheduledTask -TaskName $Name -Confirm:$false -ErrorAction SilentlyContinue
+
+  $action = New-ScheduledTaskAction -Execute $pwshExe `
+    -Argument "-NoLogo -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$Wrapper`""
+  # Trigger: at user logon AND at boot (in case PC is rebooted while logged in)
+  $triggers = @(
+    New-ScheduledTaskTrigger -AtLogOn -User $TaskUser
+    New-ScheduledTaskTrigger -AtStartup
+  )
+  $principalObj = New-ScheduledTaskPrincipal -UserId $TaskUser -LogonType S4U -RunLevel Highest
+  $settings = New-ScheduledTaskSettingsSet `
+    -AllowStartIfOnBatteries `
+    -DontStopIfGoingOnBatteries `
+    -ExecutionTimeLimit ([TimeSpan]::Zero) `
+    -RestartCount 99 `
+    -RestartInterval (New-TimeSpan -Minutes 1) `
+    -StartWhenAvailable
+  Register-ScheduledTask -TaskName $Name -Action $action -Trigger $triggers `
+    -Principal $principalObj -Settings $settings -Description $Description | Out-Null
+  Start-ScheduledTask -TaskName $Name
+  Write-Host "✓ Scheduled Task '$Name' registrato e avviato" -ForegroundColor Green
 }
 
-# 3. nssm install (per registrare i servizi Windows)
-$nssm = Get-Command nssm -ErrorAction SilentlyContinue
-if (-not $nssm) {
-  Write-Host "▶ Installo nssm via winget" -ForegroundColor Green
-  winget install --id NSSM.NSSM --silent --accept-source-agreements --accept-package-agreements
+# 1. cozza-cockpit-bus
+Set-CockpitTask `
+  -Name 'CozzaCockpit-Bus' `
+  -Wrapper $busWrapper `
+  -Description 'Cozza Cockpit Bus (Hono + WS + adapters healthz/git/pm2/quota/claude)'
+
+# 2. cozza-cockpit-tunnel
+Set-CockpitTask `
+  -Name 'CozzaCockpit-Tunnel' `
+  -Wrapper $tunnelWrapper `
+  -Description 'Reverse SSH tunnel PC -> VPS Aruba (esponi cockpit-bus + Vite + code-server)'
+
+Write-Host ""
+Write-Host "── VS Code Tunnel ──────────────────────────────────────────" -ForegroundColor Cyan
+Write-Host ""
+$codeTunnel = (Get-ChildItem -Path "$env:LOCALAPPDATA\Programs\Microsoft VS Code\bin\code-tunnel.exe" -ErrorAction SilentlyContinue)?.FullName
+if ($codeTunnel) {
+  Write-Host "Per attivare il VS Code Tunnel (interattivo, una volta sola, login GitHub):" -ForegroundColor Yellow
+  Write-Host "  & '$codeTunnel' tunnel rename cozza-pc" -ForegroundColor White
+  Write-Host "  & '$codeTunnel' tunnel service install --name cozza-pc" -ForegroundColor White
+  Write-Host ""
+  Write-Host "Da quel momento parte al boot. URL fisso: https://vscode.dev/tunnel/cozza-pc" -ForegroundColor Gray
 }
 
-# 4. Trova il path reale degli eseguibili (winget aggiunge a PATH solo dopo restart shell)
-$csPath = (Get-Command code-server -ErrorAction SilentlyContinue)?.Source
-if (-not $csPath) {
-  $csPath = (Get-ChildItem -Path "$env:LOCALAPPDATA\Programs\code-server\bin" -Filter 'code-server.cmd' -ErrorAction SilentlyContinue | Select-Object -First 1)?.FullName
-}
-$ttydPath = (Get-Command ttyd -ErrorAction SilentlyContinue)?.Source
-if (-not $ttydPath) {
-  $ttydPath = (Get-ChildItem -Path "$env:USERPROFILE\scoop\apps\ttyd\current\ttyd.exe" -ErrorAction SilentlyContinue)?.FullName
-}
-$nssmPath = (Get-Command nssm -ErrorAction SilentlyContinue)?.Source
+Write-Host ""
+Write-Host "── Stato finale ────────────────────────────────────────────" -ForegroundColor Cyan
+Get-ScheduledTask -TaskName 'CozzaCockpit-*' | Format-Table TaskName,State
 
 Write-Host ""
-Write-Host "Paths individuati:" -ForegroundColor Cyan
-Write-Host "  code-server: $csPath"
-Write-Host "  ttyd:        $ttydPath"
-Write-Host "  nssm:        $nssmPath"
+Write-Host "URL pubblici:" -ForegroundColor Gray
+Write-Host "  https://cozza-ai.vibecanyon.com/                  (chat)"
+Write-Host "  https://cozza-ai.vibecanyon.com/cockpit/           (HUD)"
+Write-Host "  https://cozza-ai.vibecanyon.com/cockpit/remote/    (Pixel remote)"
+Write-Host "  https://cozza-ai.vibecanyon.com/cockpit/dev/5173/  (preview Vite cozza-ai)"
 Write-Host ""
-
-if (-not $csPath -or -not $ttydPath -or -not $nssmPath) {
-  Write-Warning "Alcuni binari non trovati. Riavvia la shell (winget aggiunge PATH solo dopo) e rilancia."
-  exit 1
-}
-
-# 5. code-server config (auth: nginx la fa via JWT, qui mettiamo `none` ma binding 127.0.0.1)
-$csConfigDir = "$env:USERPROFILE\.config\code-server"
-New-Item -ItemType Directory -Force -Path $csConfigDir | Out-Null
-$csConfig = @"
-bind-addr: 127.0.0.1:$CodePort
-auth: none
-cert: false
-disable-telemetry: true
-"@
-Set-Content -Path "$csConfigDir\config.yaml" -Value $csConfig -Encoding UTF8
-Write-Host "▶ code-server config: $csConfigDir\config.yaml" -ForegroundColor Green
-
-# 6. NSSM service: cozza-code-server
-& $nssmPath stop cozza-code-server 2>$null
-& $nssmPath remove cozza-code-server confirm 2>$null
-& $nssmPath install cozza-code-server $csPath
-& $nssmPath set cozza-code-server AppDirectory "C:\work\Cozza"
-& $nssmPath set cozza-code-server AppEnvironmentExtra "PASSWORD="
-& $nssmPath set cozza-code-server Start SERVICE_AUTO_START
-& $nssmPath set cozza-code-server AppStdout "$env:USERPROFILE\.config\code-server\out.log"
-& $nssmPath set cozza-code-server AppStderr "$env:USERPROFILE\.config\code-server\err.log"
-& $nssmPath start cozza-code-server
-Write-Host "✓ Servizio cozza-code-server attivo su 127.0.0.1:$CodePort" -ForegroundColor Green
-
-# 7. NSSM service: cozza-ttyd (PowerShell 7 ristretto a c:\work\Cozza)
-& $nssmPath stop cozza-ttyd 2>$null
-& $nssmPath remove cozza-ttyd confirm 2>$null
-& $nssmPath install cozza-ttyd $ttydPath
-& $nssmPath set cozza-ttyd AppParameters "-p $TermPort -i 127.0.0.1 -W -t titleFixed=cozza-cockpit -t fontSize=13 pwsh.exe -NoLogo"
-& $nssmPath set cozza-ttyd AppDirectory "C:\work\Cozza"
-& $nssmPath set cozza-ttyd Start SERVICE_AUTO_START
-& $nssmPath set cozza-ttyd AppStdout "$env:USERPROFILE\.config\code-server\ttyd.out.log"
-& $nssmPath set cozza-ttyd AppStderr "$env:USERPROFILE\.config\code-server\ttyd.err.log"
-& $nssmPath start cozza-ttyd
-Write-Host "✓ Servizio cozza-ttyd attivo su 127.0.0.1:$TermPort (pwsh)" -ForegroundColor Green
-
+Write-Host "Log di servizio:" -ForegroundColor Gray
+Write-Host "  $logDir\bus.log"
+Write-Host "  $logDir\tunnel.log"
 Write-Host ""
-Write-Host "✅ Devstation locale pronta." -ForegroundColor Green
-Write-Host ""
-Write-Host "Test locale:" -ForegroundColor Cyan
-Write-Host "  Browser → http://localhost:$CodePort  (VS Code)"
-Write-Host "  Browser → http://localhost:$TermPort  (terminale)"
-Write-Host ""
-Write-Host "Step successivo: aggiungi questi port-forward al tunnel SSH:" -ForegroundColor Cyan
-Write-Host "  -R $CodePort`:localhost:$CodePort"
-Write-Host "  -R $TermPort`:localhost:$TermPort"
-Write-Host "  -R 5173:localhost:5173    (Vite cozza-ai web)"
-Write-Host "  -R 5174:localhost:5174    (Vite HUD)"
-Write-Host "  -R 5175:localhost:5175    (Vite Remote)"
-Write-Host ""
-Write-Host "Lo script tunnel.ps1 viene aggiornato automaticamente." -ForegroundColor DarkGray
+Write-Host "✅ Devstation pronta. Riavvia per verificare l'auto-start." -ForegroundColor Green
+Stop-Transcript | Out-Null
