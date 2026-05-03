@@ -258,12 +258,12 @@ export function ArtifactLightbox({ artifact, onClose, onPrev, onNext }: Artifact
             </div>
           )
         ) : artifact.kind === 'mermaid' ? (
-          <div className="bg-oled-100 rounded-xl p-6 max-w-[95vw] max-h-[90vh] overflow-auto">
-            <MermaidView code={artifact.payload} id={`lb-${artifact.id}`} />
+          <div className="bg-oled-100 rounded-xl p-6 w-[95vw] h-[90vh] flex items-center justify-center overflow-auto">
+            <MermaidView code={artifact.payload} id={`lb-${artifact.id}`} fill />
           </div>
         ) : artifact.kind === 'svg' ? (
           <div
-            className="bg-oled-100 rounded-xl p-6 max-w-[95vw] max-h-[90vh] overflow-auto svg-host"
+            className="bg-oled-100 rounded-xl p-6 w-[95vw] h-[90vh] flex items-center justify-center overflow-auto svg-host svg-host-fill"
             dangerouslySetInnerHTML={{ __html: artifact.payload }}
           />
         ) : artifact.kind === 'html' ? (

@@ -3,6 +3,13 @@ import { useEffect, useRef, useState } from 'react';
 interface MermaidViewProps {
   code: string;
   id: string;
+  /**
+   * When true, the rendered SVG is forced to fill its container
+   * (width:100%, height:100%, preserveAspectRatio meet). Used in the
+   * fullscreen lightbox where Mermaid's intrinsic px dimensions would
+   * otherwise leave the diagram tiny inside a 95vw × 90vh container.
+   */
+  fill?: boolean;
 }
 
 // Patterns built from explicit unicode codepoints so the source file stays
@@ -64,7 +71,7 @@ export function sanitizeMermaid(input: string): string {
  * common LLM mistakes before rendering and falls back to a friendly
  * error card with the offending source if parsing still fails.
  */
-export function MermaidView({ code, id }: MermaidViewProps) {
+export function MermaidView({ code, id, fill = false }: MermaidViewProps) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,8 +98,27 @@ export function MermaidView({ code, id }: MermaidViewProps) {
         const safeId = `mmd-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
         const cleaned = sanitizeMermaid(code);
         const { svg } = await mermaid.render(safeId, cleaned);
-        if (!cancelled && ref.current) {
-          ref.current.innerHTML = svg;
+        if (cancelled || !ref.current) return;
+        ref.current.innerHTML = svg;
+        // Make the rendered SVG responsive: drop Mermaid's intrinsic px
+        // width/height and let the viewBox scale to the container. With
+        // `fill` we force 100% of the parent (used in the lightbox).
+        const svgEl = ref.current.querySelector('svg');
+        if (svgEl) {
+          svgEl.removeAttribute('width');
+          svgEl.removeAttribute('height');
+          svgEl.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+          if (fill) {
+            svgEl.setAttribute(
+              'style',
+              'width: 100%; height: 100%; max-width: 100%; max-height: 100%; display: block;',
+            );
+          } else {
+            svgEl.setAttribute(
+              'style',
+              'width: 100%; height: auto; max-width: 100%; display: block;',
+            );
+          }
         }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'mermaid render failed');
@@ -101,7 +127,7 @@ export function MermaidView({ code, id }: MermaidViewProps) {
     return () => {
       cancelled = true;
     };
-  }, [code, id]);
+  }, [code, id, fill]);
 
   if (error) {
     const cleaned = sanitizeMermaid(code);
@@ -126,5 +152,15 @@ export function MermaidView({ code, id }: MermaidViewProps) {
     );
   }
 
-  return <div ref={ref} className="mermaid-host overflow-x-auto" aria-label="Diagramma" />;
+  return (
+    <div
+      ref={ref}
+      className={
+        fill
+          ? 'mermaid-host w-full h-full flex items-center justify-center'
+          : 'mermaid-host overflow-x-auto'
+      }
+      aria-label="Diagramma"
+    />
+  );
 }
