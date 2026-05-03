@@ -12,6 +12,7 @@ interface SettingsState {
   personaPrompt: string;
   temperature: number;
   artifactsPanelOpen: boolean;
+  autoEnrichVisuals: boolean;
   setDefaultModel: (m: ChatModel) => void;
   setVoiceEnabled: (v: boolean) => void;
   setTtsAutoplay: (v: boolean) => void;
@@ -21,10 +22,11 @@ interface SettingsState {
   setPersonaPrompt: (v: string) => void;
   setTemperature: (v: number) => void;
   setArtifactsPanelOpen: (v: boolean) => void;
+  setAutoEnrichVisuals: (v: boolean) => void;
 }
 
 const ENV_DEFAULT_MODEL =
-  (import.meta.env.VITE_DEFAULT_MODEL as ChatModel | undefined) ?? 'gpt-4o-mini';
+  (import.meta.env.VITE_DEFAULT_MODEL as ChatModel | undefined) ?? 'claude-haiku-4-5';
 /**
  * Default voice = Samanta (Italian native, warm/deep, narrative_story).
  * Shipped as the out-of-the-box default so first-launch on a fresh device
@@ -188,6 +190,7 @@ export const useSettingsStore = create<SettingsState>()(
       personaPrompt: DEFAULT_PERSONA,
       temperature: 0.7,
       artifactsPanelOpen: false,
+      autoEnrichVisuals: true,
       setDefaultModel: (m) => set({ defaultModel: m }),
       setVoiceEnabled: (v) => set({ voiceEnabled: v }),
       setTtsAutoplay: (v) => set({ ttsAutoplay: v }),
@@ -197,10 +200,11 @@ export const useSettingsStore = create<SettingsState>()(
       setPersonaPrompt: (v) => set({ personaPrompt: v }),
       setTemperature: (v) => set({ temperature: v }),
       setArtifactsPanelOpen: (v) => set({ artifactsPanelOpen: v }),
+      setAutoEnrichVisuals: (v) => set({ autoEnrichVisuals: v }),
     }),
     {
       name: 'cozza-settings',
-      version: 10,
+      version: 11,
       migrate: (persisted, version) => {
         const state = persisted as Partial<SettingsState> | null;
         if (!state) return {};
@@ -287,6 +291,15 @@ Verranno renderizzati in un pannello visivo separato accanto al testo.`;
           const p = state.personaPrompt ?? '';
           if (p.startsWith('Sei cozza-ai') && !p.includes('REGOLE FERREE') && p.length < 6500) {
             state.personaPrompt = DEFAULT_PERSONA;
+          }
+        }
+        // v10 → v11: autoEnrichVisuals (default true) + Anthropic restored,
+        // so default model swings back to Claude Haiku for users still on
+        // the temporary OpenAI fallback.
+        if (version < 11) {
+          state.autoEnrichVisuals = state.autoEnrichVisuals ?? true;
+          if (state.defaultModel === 'gpt-4o-mini') {
+            state.defaultModel = 'claude-haiku-4-5';
           }
         }
         return state;

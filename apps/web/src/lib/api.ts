@@ -122,3 +122,35 @@ export async function generateImage(req: ImageGenRequest, signal?: AbortSignal):
   }
   return res.blob();
 }
+
+export interface EnrichRequest {
+  assistantText: string;
+  userPrompt?: string;
+  provider?: 'anthropic' | 'openai';
+  hasImagePrompt?: boolean;
+  hasMermaid?: boolean;
+}
+
+export interface EnrichResponse {
+  blocks: string;
+  provider?: 'anthropic' | 'openai';
+}
+
+/**
+ * Ask the "art director" model to produce missing visual blocks
+ * (image-prompt, mermaid) for a finished assistant response.
+ * Returns just the fenced blocks ready to append to the message.
+ */
+export async function enrichVisuals(
+  req: EnrichRequest,
+  signal?: AbortSignal,
+): Promise<EnrichResponse> {
+  const res = await fetch(`${API_BASE}/api/enrich`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+    ...(signal ? { signal } : {}),
+  });
+  if (!res.ok) throw new ApiError(`enrich ${res.status}`, res.status);
+  return (await res.json()) as EnrichResponse;
+}

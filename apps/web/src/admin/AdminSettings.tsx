@@ -81,6 +81,17 @@ export function AdminSettings() {
         </div>
       </Section>
 
+      <Section
+        title="Pannello visivi"
+        hint="L'AI può sempre sbagliare a includere visivi. Quando attivo, dopo ogni risposta un secondo modello veloce (Claude Haiku) genera in background un image-prompt e/o un mermaid mancante. Costo trascurabile (~$0.001 per messaggio)."
+      >
+        <Toggle
+          label="Auto-enrich: garantisci sempre almeno un visivo"
+          checked={s.autoEnrichVisuals}
+          onChange={s.setAutoEnrichVisuals}
+        />
+      </Section>
+
       <Section title="Voice loop" hint="Controlli del riconoscimento vocale e della sintesi.">
         <div className="space-y-3">
           <Toggle

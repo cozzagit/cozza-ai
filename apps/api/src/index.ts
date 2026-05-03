@@ -8,6 +8,7 @@ import { chatRoutes } from '@/routes/chat';
 import { ttsRoutes } from '@/routes/tts';
 import { healthRoutes } from '@/routes/health';
 import { imageRoutes } from '@/routes/image';
+import { enrichRoutes } from '@/routes/enrich';
 import { adminRoutes } from '@/routes/admin/index.js';
 
 export function buildApp(): Hono<AppEnv> {
@@ -24,10 +25,12 @@ export function buildApp(): Hono<AppEnv> {
   app.use('/api/chat/*', rateLimitMiddleware);
   app.use('/api/tts', rateLimitMiddleware);
   app.use('/api/image/*', rateLimitMiddleware);
+  app.use('/api/enrich', rateLimitMiddleware);
 
   app.route('/api/chat', chatRoutes);
   app.route('/api/tts', ttsRoutes);
   app.route('/api/image', imageRoutes);
+  app.route('/api/enrich', enrichRoutes);
   app.route('/api/healthz', healthRoutes);
   app.route('/api/admin', adminRoutes);
 

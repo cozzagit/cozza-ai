@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { v7 as uuidv7 } from 'uuid';
-import { streamChat, ApiError } from '@/lib/api';
+import { streamChat, enrichVisuals, ApiError } from '@/lib/api';
 import { db, type MessageRecord, type Conversation } from '@/lib/db';
 import { PROVIDER_BY_MODEL, type ChatModel, type ChatMessage } from '@cozza/shared';
 import { useSettingsStore } from '@/stores/settings';
@@ -8,6 +8,50 @@ import { log } from '@/lib/debug-log';
 import { stripFencesForTts } from '@/lib/artifacts';
 
 export type ChatStatus = 'idle' | 'streaming' | 'error';
+
+interface EnrichArgs {
+  messageId: string;
+  assistantText: string;
+  userPrompt: string;
+  hasImagePrompt: boolean;
+  hasMermaid: boolean;
+}
+
+/**
+ * Background enrichment: asks /api/enrich for missing visual blocks and
+ * appends them to the persisted message. Live-query in the UI picks up
+ * the change automatically and the artifacts panel shows the new
+ * image/mermaid card. Silently no-ops on errors.
+ */
+async function enrichInBackground(args: EnrichArgs): Promise<void> {
+  try {
+    log.info('enrich.bg', 'start', {
+      hasImagePrompt: args.hasImagePrompt,
+      hasMermaid: args.hasMermaid,
+    });
+    const { blocks, provider } = await enrichVisuals({
+      assistantText: args.assistantText,
+      userPrompt: args.userPrompt,
+      hasImagePrompt: args.hasImagePrompt,
+      hasMermaid: args.hasMermaid,
+    });
+    if (!blocks.trim()) {
+      log.info('enrich.bg', 'no blocks');
+      return;
+    }
+    // Append to the persisted message — the artifacts extractor picks
+    // up the new fenced blocks on the next render.
+    const current = await db.messages.get(args.messageId);
+    if (!current) return;
+    const newContent = `${current.content}\n\n${blocks.trim()}\n`;
+    await db.messages.update(args.messageId, { content: newContent });
+    log.info('enrich.bg', 'appended', { provider, len: blocks.length });
+  } catch (e) {
+    log.warn('enrich.bg', 'failed (silent)', {
+      msg: e instanceof Error ? e.message : 'unknown',
+    });
+  }
+}
 
 export interface UseChatOptions {
   conversationId: string | null;
@@ -166,6 +210,24 @@ export function useChat(opts: UseChatOptions) {
         setStatus('idle');
         setStreamingText('');
         log.info('chat.send', 'done', { tokens: { inputTokens, outputTokens } });
+
+        // Post-stream auto-enrich: if the response is meaningful AND has no
+        // visual blocks yet, ask the art-director model in background to add
+        // an image-prompt (and optional mermaid). Failures are silent — the
+        // chat still works, the user just doesn't get auto-visuals.
+        if (settings.autoEnrichVisuals !== false && buf.trim().length >= 80) {
+          const hasImagePrompt = /```image[-_]?prompt\s*\n/i.test(buf);
+          const hasMermaid = /```mermaid\s*\n/i.test(buf);
+          if (!hasImagePrompt || !hasMermaid) {
+            void enrichInBackground({
+              messageId: assistantId,
+              assistantText: buf,
+              userPrompt: userText,
+              hasImagePrompt,
+              hasMermaid,
+            });
+          }
+        }
       } catch (e) {
         if (ctrl.signal.aborted) {
           log.warn('chat.send', 'aborted by user');
