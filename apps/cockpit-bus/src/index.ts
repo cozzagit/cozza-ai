@@ -12,7 +12,7 @@ import { startGitWatcher } from './adapters/git-watcher.js';
 import { startPm2Adapter } from './adapters/pm2.js';
 import { startQuotaAdapter } from './adapters/quotas.js';
 import { startClaudeAdapter } from './adapters/claude.js';
-import { mountWs } from './ws.js';
+import { mountWs } from './gateway.js';
 import { setInputArmed, isInputArmed } from './input.js';
 
 type Vars = { claims: CockpitClaims };
