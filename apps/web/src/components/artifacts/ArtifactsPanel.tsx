@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Artifact } from '@/lib/artifacts';
 import { MermaidView } from './MermaidView';
 import { ImagePromptView } from './ImagePromptView';
+import { ArtifactLightbox } from './ArtifactLightbox';
 
 interface ArtifactsPanelProps {
   artifacts: Artifact[];
@@ -28,6 +29,15 @@ export function ArtifactsPanel({
     }
     return [...byMessage.entries()];
   }, [artifacts]);
+
+  // Lightbox state — index into the flat artifacts array for prev/next.
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const openLightbox = (a: Artifact): void => {
+    const i = artifacts.findIndex((x) => x.id === a.id);
+    if (i >= 0) setLightboxIndex(i);
+  };
+  const closeLightbox = (): void => setLightboxIndex(null);
+  const lightboxArtifact = lightboxIndex !== null ? artifacts[lightboxIndex] : null;
 
   // Scroll the drawer to the latest artifact when the panel opens or when a
   // new one arrives while it's open. Using `block: 'end'` so the user lands
@@ -112,7 +122,7 @@ export function ArtifactsPanel({
                 aria-label={`Artefatti del messaggio ${msgId.slice(-8)}`}
               >
                 {arts.map((a) => (
-                  <ArtifactView key={a.id} artifact={a} />
+                  <ArtifactView key={a.id} artifact={a} onZoom={() => openLightbox(a)} />
                 ))}
               </section>
             ))
@@ -120,47 +130,131 @@ export function ArtifactsPanel({
           <div ref={endRef} aria-hidden className="h-2" />
         </div>
       </aside>
+
+      {lightboxArtifact && (
+        <ArtifactLightbox
+          artifact={lightboxArtifact}
+          onClose={closeLightbox}
+          {...(lightboxIndex !== null && lightboxIndex > 0
+            ? { onPrev: () => setLightboxIndex((i) => (i !== null ? Math.max(0, i - 1) : i)) }
+            : {})}
+          {...(lightboxIndex !== null && lightboxIndex < artifacts.length - 1
+            ? {
+                onNext: () =>
+                  setLightboxIndex((i) => (i !== null ? Math.min(artifacts.length - 1, i + 1) : i)),
+              }
+            : {})}
+        />
+      )}
     </>
   );
 }
 
-function ArtifactView({ artifact }: { artifact: Artifact }) {
+function ZoomButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Ingrandisci a tutto schermo"
+      title="Ingrandisci"
+      className="absolute top-2 right-2 z-10 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-sm text-white border border-white/20 opacity-0 group-hover/artifact:opacity-100 focus:opacity-100 transition-opacity flex items-center justify-center"
+    >
+      <span aria-hidden className="text-xs">
+        ⛶
+      </span>
+    </button>
+  );
+}
+
+function ArtifactView({ artifact, onZoom }: { artifact: Artifact; onZoom: () => void }) {
   switch (artifact.kind) {
     case 'image':
       return (
-        <figure>
-          <img
-            src={artifact.payload}
-            alt={artifact.caption ?? ''}
-            className="rounded-lg w-full max-h-[60vh] object-contain border border-white/10"
-            loading="lazy"
-          />
+        <figure className="relative group/artifact">
+          <button
+            type="button"
+            onClick={onZoom}
+            aria-label="Apri immagine a tutto schermo"
+            className="block w-full focus-accent rounded-lg overflow-hidden"
+          >
+            <img
+              src={artifact.payload}
+              alt={artifact.caption ?? ''}
+              className="rounded-lg w-full max-h-[60vh] object-contain border border-white/10 cursor-zoom-in"
+              loading="lazy"
+            />
+          </button>
+          <ZoomButton onClick={onZoom} />
           {artifact.caption && (
             <figcaption className="text-xs text-muted-fg/70 mt-1">{artifact.caption}</figcaption>
           )}
         </figure>
       );
     case 'image-prompt':
-      return <ImagePromptView prompt={artifact.payload} id={artifact.id} />;
+      return (
+        <div className="relative group/artifact">
+          <ImagePromptView prompt={artifact.payload} id={artifact.id} />
+          <ZoomButton onClick={onZoom} />
+        </div>
+      );
     case 'mermaid':
       return (
-        <div className="rounded-lg bg-oled-100 p-3 border border-white/5">
-          <div className="text-[10px] uppercase tracking-wider text-muted-fg/60 mb-2">Mermaid</div>
-          <MermaidView code={artifact.payload} id={artifact.id} />
+        <div className="relative group/artifact rounded-lg bg-oled-100 p-3 border border-white/5">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-[10px] uppercase tracking-wider text-muted-fg/60">Mermaid</div>
+            <button
+              type="button"
+              onClick={onZoom}
+              aria-label="Ingrandisci diagramma"
+              title="Ingrandisci"
+              className="text-muted-fg hover:text-white text-xs px-2 py-0.5 rounded-md hover:bg-white/10"
+            >
+              ⛶
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={onZoom}
+            aria-label="Apri diagramma a tutto schermo"
+            className="w-full text-left cursor-zoom-in"
+          >
+            <MermaidView code={artifact.payload} id={artifact.id} />
+          </button>
         </div>
       );
     case 'svg':
       return (
-        <div
-          className="rounded-lg bg-oled-100 p-3 border border-white/5 overflow-x-auto svg-host"
-          dangerouslySetInnerHTML={{ __html: sanitizeSvg(artifact.payload) }}
-        />
+        <div className="relative group/artifact">
+          <button
+            type="button"
+            onClick={onZoom}
+            aria-label="Apri SVG a tutto schermo"
+            className="block w-full focus-accent rounded-lg cursor-zoom-in"
+          >
+            <div
+              className="rounded-lg bg-oled-100 p-3 border border-white/5 overflow-x-auto svg-host pointer-events-none"
+              dangerouslySetInnerHTML={{ __html: sanitizeSvg(artifact.payload) }}
+            />
+          </button>
+          <ZoomButton onClick={onZoom} />
+        </div>
       );
     case 'html':
       return (
-        <div className="rounded-lg overflow-hidden border border-white/10">
-          <div className="text-[10px] uppercase tracking-wider text-muted-fg/60 px-2 py-1 bg-oled-100">
-            HTML preview
+        <div className="relative group/artifact rounded-lg overflow-hidden border border-white/10">
+          <div className="flex items-center justify-between px-2 py-1 bg-oled-100">
+            <div className="text-[10px] uppercase tracking-wider text-muted-fg/60">
+              HTML preview
+            </div>
+            <button
+              type="button"
+              onClick={onZoom}
+              aria-label="Ingrandisci preview HTML"
+              title="Ingrandisci"
+              className="text-muted-fg hover:text-white text-xs px-2 py-0.5 rounded-md hover:bg-white/10"
+            >
+              ⛶
+            </button>
           </div>
           <iframe
             srcDoc={artifact.payload}
