@@ -118,6 +118,19 @@
   color: #c4b5fd !important;
 }
 
+/* Defensive: hide any mermaid global error overlay that may slip through
+   (even with `suppressErrorRendering: true` future versions might still
+   inject something at document-root). The toast is identifiable by its
+   text node "Syntax error in text" — we hide both the legacy bomb image
+   selector pattern and the modern .mermaid #dmermaid-* root errors. */
+[id^='dmermaid-'],
+[id^='mermaid-error-'],
+.mermaidTooltip,
+text.error-text,
+g[id^='error-'] {
+  display: none !important;
+}
+
 /* SVG artifacts — let the host control sizing instead of intrinsic px */
 .svg-host > svg {
   max-width: 100%;

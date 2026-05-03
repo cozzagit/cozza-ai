@@ -94,9 +94,17 @@ export function MermaidView({ code, id, fill = false }: MermaidViewProps) {
             fontFamily: 'Geist, Inter, system-ui, sans-serif',
           },
           securityLevel: 'strict',
-        });
+          // Mermaid 11+ injects a global "💣 Syntax error in text" overlay
+          // in the bottom-left when rendering fails — even though we already
+          // catch the error and show our own card. This flag tells it to
+          // throw instead, so our try/catch handles it cleanly.
+          suppressErrorRendering: true,
+        } as Parameters<typeof mermaid.initialize>[0]);
         const safeId = `mmd-${id.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
         const cleaned = sanitizeMermaid(code);
+        // Validate up front so the error path is taken before mermaid's
+        // legacy renderer even tries to inject anything into the DOM.
+        await mermaid.parse(cleaned);
         const { svg } = await mermaid.render(safeId, cleaned);
         if (cancelled || !ref.current) return;
         ref.current.innerHTML = svg;
