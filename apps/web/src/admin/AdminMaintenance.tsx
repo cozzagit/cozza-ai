@@ -4,6 +4,7 @@ import { fetchAdminInfo, fetchVoicePreview, type AdminInfo } from '@/lib/admin-a
 import { StreamingAudioPlayer } from '@/lib/audio';
 import { useSettingsStore } from '@/stores/settings';
 import { getDebugLog, subscribeDebugLog, clearDebugLog, type DebugEntry } from '@/lib/debug-log';
+import { sanitizeMermaid } from '@/components/artifacts/MermaidView';
 
 export function AdminMaintenance() {
   const [info, setInfo] = useState<AdminInfo | null>(null);
@@ -122,6 +123,67 @@ export function AdminMaintenance() {
     }
   };
 
+  const sanitizeArtifacts = async (): Promise<void> => {
+    if (
+      !confirm(
+        'Scansiona tutti i messaggi locali e ripulisci i blocchi mermaid/svg con sintassi rotta.\n\n' +
+          "I blocchi che non parsano vengono sostituiti con una nota '[diagramma rimosso]' " +
+          'in modo che la libreria mermaid non provi più a renderizzarli. ' +
+          'Le immagini e i blocchi validi non vengono toccati.\n\nProcedere?',
+      )
+    )
+      return;
+    setBusy('sanitize');
+    setMsg(null);
+    try {
+      const mermaid = (await import('mermaid')).default;
+      mermaid.initialize({
+        startOnLoad: false,
+        securityLevel: 'strict',
+      });
+      const messages = await db.messages.toArray();
+      let fixedMessages = 0;
+      let fixedMermaid = 0;
+      let fixedSvg = 0;
+      for (const m of messages) {
+        const original = m.content;
+        let next = original;
+        // Mermaid blocks
+        const mermaidRe = /```mermaid\s*\n([\s\S]*?)```/g;
+        next = await replaceAsync(next, mermaidRe, async (full, body) => {
+          const cleaned = sanitizeMermaid(body);
+          try {
+            await mermaid.parse(cleaned);
+            // valid → keep cleaned version
+            return '```mermaid\n' + cleaned + '\n```';
+          } catch {
+            fixedMermaid++;
+            return '`[diagramma rimosso — mermaid non valido]`';
+          }
+        });
+        // SVG blocks: a quick check that the payload contains <svg
+        const svgRe = /```svg\s*\n([\s\S]*?)```/g;
+        next = next.replace(svgRe, (full, body) => {
+          if (/<svg[\s>]/i.test(String(body))) return full;
+          fixedSvg++;
+          return '`[svg rimosso — payload non valido]`';
+        });
+        if (next !== original) {
+          await db.messages.update(m.id, { content: next });
+          fixedMessages++;
+        }
+      }
+      setMsg(
+        `Scansionati ${messages.length} messaggi · ` +
+          `${fixedMessages} riscritti · ${fixedMermaid} mermaid rotti · ${fixedSvg} svg rotti`,
+      );
+    } catch (e) {
+      setMsg(`Pulizia fallita: ${e instanceof Error ? e.message : 'errore'}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const requestMic = async (): Promise<void> => {
     setBusy('mic');
     setMsg(null);
@@ -185,6 +247,12 @@ export function AdminMaintenance() {
           desc="Backup JSON di tutte le chat e messaggi"
           onClick={exportConversations}
           busy={busy === 'export'}
+        />
+        <Action
+          title="🧹 Ripulisci diagrammi rotti"
+          desc="Scansiona i messaggi e sostituisce mermaid/svg con sintassi non valida"
+          onClick={sanitizeArtifacts}
+          busy={busy === 'sanitize'}
         />
         <Action
           title="Aggiorna service worker"
@@ -311,6 +379,26 @@ function DebugLogPanel() {
       )}
     </section>
   );
+}
+
+/**
+ * String.prototype.replace doesn't await async callbacks. Roll a tiny
+ * helper so we can call `mermaid.parse` (async) per match.
+ */
+async function replaceAsync(
+  input: string,
+  re: RegExp,
+  fn: (full: string, ...groups: string[]) => Promise<string>,
+): Promise<string> {
+  const promises: Promise<string>[] = [];
+  input.replace(re, (full, ...args) => {
+    const groups = args.slice(0, -2) as string[];
+    promises.push(fn(full, ...groups));
+    return full;
+  });
+  const replacements = await Promise.all(promises);
+  let i = 0;
+  return input.replace(re, () => replacements[i++] ?? '');
 }
 
 function Action({
