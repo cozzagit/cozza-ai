@@ -293,6 +293,26 @@ export default function App() {
               </span>
             </button>
             <a
+              href="/cockpit/"
+              aria-label="Apri Cockpit HUD"
+              title="🛸 Cockpit HUD — plancia di comando per i 25+ progetti"
+              className="focus-accent rounded-md p-2 text-muted-fg hover:text-accent hover:bg-accent/10"
+            >
+              <span aria-hidden className="text-base">
+                🛸
+              </span>
+            </a>
+            <a
+              href="/cockpit/remote/"
+              aria-label="Apri Cockpit Remote (mobile/trackpad)"
+              title="📱 Cockpit Remote — telecomando + trackpad + voice"
+              className="focus-accent rounded-md p-2 text-muted-fg hover:text-accent hover:bg-accent/10 sm:hidden"
+            >
+              <span aria-hidden className="text-base">
+                📱
+              </span>
+            </a>
+            <a
               href="/admin"
               onClick={(e) => {
                 e.preventDefault();

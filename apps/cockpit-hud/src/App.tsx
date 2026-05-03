@@ -120,6 +120,14 @@ function Header({
   return (
     <header className="px-6 pt-4 pb-3 flex items-center justify-between">
       <div className="flex items-center gap-3">
+        <a
+          href="/"
+          aria-label="Torna alla chat cozza-ai"
+          title="← Chat"
+          className="pill pill-unknown hover:opacity-80 no-underline"
+        >
+          ← Chat
+        </a>
         <div className="display text-xl glow-cyan">🛸 COZZA · COCKPIT</div>
         <span className="text-xs opacity-60 font-mono">v0.1</span>
       </div>

@@ -91,9 +91,17 @@ export function App() {
 
 function Header({ connected }: { connected: boolean }) {
   return (
-    <header className="px-3 pt-3 pb-2 flex items-center justify-between">
-      <div className="display text-base glow-cyan">📱 COZZA · REMOTE</div>
-      <span className={connected ? 'pill pill-ok' : 'pill pill-down'}>
+    <header className="px-3 pt-3 pb-2 flex items-center justify-between gap-2">
+      <a
+        href="/"
+        aria-label="Torna alla chat cozza-ai"
+        title="← Chat"
+        className="pill pill-unknown shrink-0 no-underline"
+      >
+        ← Chat
+      </a>
+      <div className="display text-base glow-cyan truncate">📱 COZZA · REMOTE</div>
+      <span className={connected ? 'pill pill-ok shrink-0' : 'pill pill-down shrink-0'}>
         {connected ? '● online' : '○ offline'}
       </span>
     </header>
