@@ -20,12 +20,19 @@ interface WsClient {
 }
 
 interface IncomingFrame {
-  kind: 'subscribe' | 'unsubscribe' | 'input' | 'killswitch' | 'ping';
+  kind: 'subscribe' | 'unsubscribe' | 'input' | 'killswitch' | 'ping' | 'broadcast' | 'handoff';
   topic?: string;
   // input frames
   type?: 'mouseMove' | 'mouseClick' | 'mouseScroll' | 'keyDown';
   payload?: Record<string, unknown>;
   killCode?: string;
+  // broadcast / handoff
+  target?: 'hud' | 'desktop' | 'remote' | 'all';
+  command?: string;
+  args?: Record<string, unknown>;
+  surface?: 'desktop' | 'xr' | 'mobile';
+  to?: 'desktop' | 'xr' | 'mobile';
+  context?: string;
 }
 
 /**
@@ -121,6 +128,30 @@ export function mountWs(server: Server): void {
         else if (frame.type === 'mouseClick') await dispatchMouseClick(p);
         else if (frame.type === 'mouseScroll') await dispatchMouseScroll(p as { dy: number });
         else if (frame.type === 'keyDown') await dispatchKey(p as { key: string });
+        return;
+      }
+      case 'broadcast': {
+        if (!frame.command || !frame.target) return;
+        const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        bus.emitEvent({
+          type: 'command',
+          ts: Date.now(),
+          id,
+          target: frame.target,
+          command: frame.command,
+          ...(frame.args ? { args: frame.args } : {}),
+        });
+        return;
+      }
+      case 'handoff': {
+        if (!frame.surface || !frame.to) return;
+        bus.emitEvent({
+          type: 'handoff',
+          ts: Date.now(),
+          surface: frame.surface,
+          to: frame.to,
+          ...(frame.context ? { context: frame.context } : {}),
+        });
         return;
       }
       default:

@@ -2,7 +2,17 @@ import { useEffect, useRef, useState } from 'react';
 import { useCockpitStore } from './store';
 
 export interface CockpitEvent {
-  type: 'health' | 'build' | 'claude' | 'log' | 'git' | 'metric' | 'quota' | 'input';
+  type:
+    | 'health'
+    | 'build'
+    | 'claude'
+    | 'log'
+    | 'git'
+    | 'metric'
+    | 'quota'
+    | 'input'
+    | 'command'
+    | 'handoff';
   ts: number;
   project?: string;
   // We keep payload loose on the client — adapters validate server-side.
@@ -13,6 +23,7 @@ interface ConnectionState {
   connected: boolean;
   events: CockpitEvent[];
   error: string | null;
+  send: (frame: Record<string, unknown>) => void;
 }
 
 /**
@@ -23,16 +34,21 @@ interface ConnectionState {
 export function useCockpitBus(maxEvents = 300): ConnectionState {
   const token = useCockpitStore((s) => s.token);
   const busUrl = useCockpitStore((s) => s.busUrl);
+  const wsRef = useRef<WebSocket | null>(null);
+  const send = (frame: Record<string, unknown>): void => {
+    const ws = wsRef.current;
+    if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(frame));
+  };
   const [state, setState] = useState<ConnectionState>({
     connected: false,
     events: [],
     error: null,
+    send,
   });
-  const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     if (!token) {
-      setState({ connected: false, events: [], error: 'no token' });
+      setState((p) => ({ ...p, connected: false, events: [], error: 'no token' }));
       return;
     }
     const wsBase = busUrl.replace(/^http/, 'ws');

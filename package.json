@@ -21,6 +21,7 @@
     "cockpit:multiverse": "pwsh ./scripts/cockpit.ps1 -All",
     "tunnel:install": "pwsh ./scripts/install-tunnel.ps1",
     "tunnel:up": "pwsh ./scripts/tunnel.ps1",
+    "new": "node scripts/new-project.mjs",
     "build": "pnpm --filter @cozza/shared build && pnpm -r --filter \"./apps/*\" run build",
     "lint": "pnpm -r run lint",
     "typecheck": "pnpm --filter @cozza/shared build && pnpm -r run typecheck",

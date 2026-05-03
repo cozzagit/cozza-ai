@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useCockpitStore, type HudMode, type ThemeId } from './store';
 import { useCockpitBus, type CockpitEvent } from './bus';
 import { Vitals } from './modes/Vitals';
@@ -7,6 +7,8 @@ import { Logs } from './modes/Logs';
 import { Metrics } from './modes/Metrics';
 import { Ambient } from './modes/Ambient';
 import { Diff } from './modes/Diff';
+import { Pomodoro } from './modes/Pomodoro';
+import { Spend } from './modes/Spend';
 
 const MODES: { id: HudMode; label: string; icon: string }[] = [
   { id: 'vitals', label: 'Vitals', icon: '◉' },
@@ -14,6 +16,8 @@ const MODES: { id: HudMode; label: string; icon: string }[] = [
   { id: 'logs', label: 'Logs', icon: '☰' },
   { id: 'diff', label: 'Diff', icon: '⟷' },
   { id: 'metrics', label: 'Metrics', icon: '∿' },
+  { id: 'spend', label: 'Spend', icon: '$' },
+  { id: 'pomodoro', label: 'Pomo', icon: '◯' },
   { id: 'ambient', label: 'Ambient', icon: '◐' },
 ];
 
@@ -25,7 +29,42 @@ export function App() {
   const setToken = useCockpitStore((s) => s.setToken);
   const toggleTheme = useCockpitStore((s) => s.toggleTheme);
 
+  // VS Code webview / external link can hydrate token via #token=…
+  useEffect(() => {
+    if (token) return;
+    const m = /#token=([^&]+)/.exec(window.location.hash);
+    if (m?.[1]) {
+      setToken(decodeURIComponent(m[1]));
+      // strip from URL so it's not visible
+      history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+  }, [token, setToken]);
+
   const { connected, events, error } = useCockpitBus(500);
+
+  // React to remote `command` events — this is how Pixel/voice tells the HUD
+  // to switch mode, change theme, etc. We dedupe by id and process the most
+  // recent command in the buffer. Listening on `events` (capped) is fine
+  // because the user can't realistically generate more than a few per second.
+  const lastCmdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const cmd = events.find((e) => e.type === 'command');
+    if (!cmd) return;
+    const id = String(cmd.id ?? '');
+    if (!id || id === lastCmdRef.current) return;
+    const target = String(cmd.target ?? 'all');
+    if (target !== 'all' && target !== 'hud') return;
+    lastCmdRef.current = id;
+    const command = String(cmd.command ?? '');
+    const args = (cmd.args ?? {}) as Record<string, unknown>;
+    if (command === 'hud.setMode' && typeof args.mode === 'string') {
+      setMode(args.mode as HudMode);
+    } else if (command === 'hud.toggleTheme') {
+      toggleTheme();
+    } else if (command === 'hud.setTheme' && typeof args.theme === 'string') {
+      useCockpitStore.getState().setTheme(args.theme as ThemeId);
+    }
+  }, [events, setMode, toggleTheme]);
 
   // Theme class on <html>
   useEffect(() => {
@@ -60,6 +99,8 @@ export function App() {
         {mode === 'logs' && <Logs events={events} />}
         {mode === 'diff' && <Diff events={events} />}
         {mode === 'metrics' && <Metrics events={events} />}
+        {mode === 'spend' && <Spend events={events} />}
+        {mode === 'pomodoro' && <Pomodoro />}
         {mode === 'ambient' && <Ambient />}
       </main>
     </div>

@@ -1,0 +1,128 @@
+{
+  "name": "cozza-cockpit-vscode",
+  "displayName": "🛸 Cozza Cockpit",
+  "description": "Status bar, tree view, command palette, and webview HUD for the Cozza dev cockpit.",
+  "version": "0.1.0",
+  "publisher": "cozza",
+  "private": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.cjs",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cozza.cockpit.openHud",
+        "title": "Cozza: Open HUD (webview)"
+      },
+      {
+        "command": "cozza.cockpit.switchLayout",
+        "title": "Cozza: Switch Layout…"
+      },
+      {
+        "command": "cozza.cockpit.deployCurrent",
+        "title": "Cozza: Deploy current project"
+      },
+      {
+        "command": "cozza.cockpit.armInput",
+        "title": "Cozza: Arm input plane (PC remote)"
+      },
+      {
+        "command": "cozza.cockpit.disarmInput",
+        "title": "Cozza: Disarm input plane"
+      },
+      {
+        "command": "cozza.cockpit.setToken",
+        "title": "Cozza: Set bus token"
+      },
+      {
+        "command": "cozza.cockpit.refreshTree",
+        "title": "Cozza: Refresh project tree"
+      },
+      {
+        "command": "cozza.cockpit.openProject",
+        "title": "Cozza: Open project URL"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "cozza-cockpit",
+          "title": "Cozza Cockpit",
+          "icon": "./media/cozza.svg"
+        }
+      ]
+    },
+    "views": {
+      "cozza-cockpit": [
+        {
+          "id": "cozza.cockpit.tree",
+          "name": "Projects",
+          "icon": "./media/cozza.svg"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "cozza.cockpit.refreshTree",
+          "when": "view == cozza.cockpit.tree",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "cozza.cockpit.openProject",
+          "when": "view == cozza.cockpit.tree && viewItem == project",
+          "group": "inline"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Cozza Cockpit",
+      "properties": {
+        "cozzaCockpit.busUrl": {
+          "type": "string",
+          "default": "http://localhost:3030",
+          "description": "Cockpit bus base URL"
+        },
+        "cozzaCockpit.token": {
+          "type": "string",
+          "default": "",
+          "description": "JWT token for the cockpit bus (use `Cozza: Set bus token` to set securely)."
+        }
+      }
+    },
+    "keybindings": [
+      {
+        "command": "cozza.cockpit.switchLayout",
+        "key": "ctrl+k ctrl+l",
+        "mac": "cmd+k cmd+l"
+      },
+      {
+        "command": "cozza.cockpit.openHud",
+        "key": "ctrl+k ctrl+h",
+        "mac": "cmd+k cmd+h"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "esbuild src/extension.ts --bundle --outfile=dist/extension.cjs --external:vscode --platform=node --format=cjs --target=node20 --sourcemap",
+    "dev": "esbuild src/extension.ts --bundle --outfile=dist/extension.cjs --external:vscode --platform=node --format=cjs --target=node20 --sourcemap --watch",
+    "package": "vsce package --no-dependencies -o cozza-cockpit-vscode.vsix",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "@types/vscode": "^1.90.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.3"
+  }
+}

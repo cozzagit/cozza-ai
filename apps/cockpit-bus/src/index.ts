@@ -11,6 +11,7 @@ import { startHealthAdapter } from './adapters/health.js';
 import { startGitWatcher } from './adapters/git-watcher.js';
 import { startPm2Adapter } from './adapters/pm2.js';
 import { startQuotaAdapter } from './adapters/quotas.js';
+import { startClaudeAdapter } from './adapters/claude.js';
 import { mountWs } from './ws.js';
 import { setInputArmed, isInputArmed } from './input.js';
 
@@ -105,6 +106,46 @@ app.post('/api/emit', async (c) => {
   return c.json({ ok: true });
 });
 
+// Broadcast command to subscribed clients (HUD/Remote/Desktop ext)
+const CommandBodySchema = z.object({
+  target: z.enum(['hud', 'desktop', 'remote', 'all']),
+  command: z.string().min(1).max(64),
+  args: z.record(z.string(), z.unknown()).optional(),
+});
+app.post('/api/command', async (c) => {
+  const claims = c.get('claims');
+  if (!hasScope(claims, 'cockpit:emit')) return c.json({ error: 'forbidden' }, 403);
+  const body = CommandBodySchema.parse(await c.req.json());
+  const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  bus.emitEvent({
+    type: 'command',
+    ts: Date.now(),
+    id,
+    target: body.target,
+    command: body.command,
+    ...(body.args ? { args: body.args } : {}),
+  });
+  return c.json({ ok: true, id });
+});
+
+// Cursor handoff between surfaces
+const HandoffBodySchema = z.object({
+  surface: z.enum(['desktop', 'xr', 'mobile']),
+  to: z.enum(['desktop', 'xr', 'mobile']),
+  context: z.string().max(120).optional(),
+});
+app.post('/api/handoff', async (c) => {
+  const body = HandoffBodySchema.parse(await c.req.json());
+  bus.emitEvent({
+    type: 'handoff',
+    ts: Date.now(),
+    surface: body.surface,
+    to: body.to,
+    ...(body.context ? { context: body.context } : {}),
+  });
+  return c.json({ ok: true });
+});
+
 app.post('/api/input/arm', (c) => {
   const claims = c.get('claims');
   if (!hasScope(claims, 'input:write')) return c.json({ error: 'forbidden' }, 403);
@@ -130,6 +171,7 @@ const stopHealth = startHealthAdapter();
 const stopGit = startGitWatcher({ root: 'c:/work/Cozza', ignore: ['node_modules', 'dist'] });
 const stopPm2 = startPm2Adapter();
 const stopQuota = startQuotaAdapter();
+const stopClaude = startClaudeAdapter();
 
 const shutdown = (): void => {
   console.log('🛬 shutting down…');
@@ -137,6 +179,7 @@ const shutdown = (): void => {
   stopGit();
   stopPm2();
   stopQuota();
+  stopClaude();
   process.exit(0);
 };
 process.on('SIGINT', shutdown);

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useRemoteStore, type RemoteMode } from './store';
 import { useCockpitBus, type CockpitEvent } from './bus';
 import { Trackpad } from './Trackpad';
+import { Voice } from './Voice';
 
 const MODES: { id: RemoteMode; icon: string; label: string }[] = [
   { id: 'home', icon: '◉', label: 'Home' },
@@ -40,9 +41,48 @@ export function App() {
             onKill={() => send({ kind: 'killswitch', killCode: prompt('Kill code:') ?? '' })}
           />
         )}
-        {mode === 'switcher' && <Switcher />}
-        {mode === 'actions' && <Actions onAction={(name) => alert(`TODO: ${name}`)} />}
-        {mode === 'voice' && <Voice />}
+        {mode === 'switcher' && (
+          <Switcher
+            onPick={(hudMode) => {
+              vibrate(8);
+              send({
+                kind: 'broadcast',
+                target: 'hud',
+                command: 'hud.setMode',
+                args: { mode: hudMode },
+              });
+            }}
+            onToggleTheme={() => {
+              vibrate(8);
+              send({ kind: 'broadcast', target: 'hud', command: 'hud.toggleTheme' });
+            }}
+          />
+        )}
+        {mode === 'actions' && (
+          <Actions
+            onAction={(name) => {
+              vibrate(12);
+              send({
+                kind: 'broadcast',
+                target: 'desktop',
+                command: name,
+              });
+            }}
+          />
+        )}
+        {mode === 'voice' && (
+          <Voice
+            onCommand={(cmd) => {
+              vibrate(12);
+              send({
+                kind: 'broadcast',
+                target: cmd.target,
+                command: cmd.command,
+                ...(cmd.args ? { args: cmd.args } : {}),
+              });
+            }}
+          />
+        )}
       </main>
       <BottomNav current={mode} onChange={setMode} />
     </div>
@@ -174,24 +214,37 @@ function TrackpadView({ onMove, onClick, onScroll, onKill }: TrackpadViewProps) 
   );
 }
 
-function Switcher() {
+function Switcher({
+  onPick,
+  onToggleTheme,
+}: {
+  onPick: (m: string) => void;
+  onToggleTheme: () => void;
+}) {
   return (
     <div className="space-y-3">
       <h2 className="display text-sm opacity-70 uppercase tracking-wider">HUD Mode</h2>
       <div className="grid grid-cols-2 gap-2">
-        {['vitals', 'stream', 'logs', 'diff', 'metrics', 'ambient'].map((m) => (
-          <button
-            key={m}
-            type="button"
-            className="surface rounded-xl py-4 font-mono text-sm uppercase"
-          >
-            {m}
-          </button>
-        ))}
+        {['vitals', 'stream', 'logs', 'diff', 'metrics', 'spend', 'pomodoro', 'ambient'].map(
+          (m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => onPick(m)}
+              className="surface rounded-xl py-4 font-mono text-sm uppercase"
+            >
+              {m}
+            </button>
+          ),
+        )}
       </div>
-      <p className="text-xs opacity-50 px-1">
-        {`TODO: invia broadcast all'HUD via bus per cambiare modalità.`}
-      </p>
+      <button
+        type="button"
+        onClick={onToggleTheme}
+        className="w-full surface rounded-xl py-3 font-mono text-sm uppercase mt-2"
+      >
+        🎨 Toggle theme (Cyber/Bauhaus)
+      </button>
     </div>
   );
 }
@@ -220,17 +273,6 @@ function Actions({ onAction }: { onAction: (name: string) => void }) {
           </button>
         ))}
       </div>
-    </div>
-  );
-}
-
-function Voice() {
-  return (
-    <div className="surface rounded-xl p-6 text-center">
-      <div className="text-5xl mb-3">🎤</div>
-      <p className="font-mono text-sm opacity-70">
-        Voice command in arrivo (riusa pipeline cozza-ai).
-      </p>
     </div>
   );
 }

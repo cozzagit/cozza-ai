@@ -82,6 +82,30 @@ export const InputEvent = z.object({
   payload: z.record(z.string(), z.unknown()),
 });
 
+/** Broadcast/control events drive other surfaces (HUD switch, deploy trigger, …). */
+export const CommandEvent = z.object({
+  type: z.literal('command'),
+  ts: z.number(),
+  /** unique id to dedupe replays. */
+  id: z.string(),
+  /** target surface — 'hud' / 'desktop' / 'all' */
+  target: z.enum(['hud', 'desktop', 'remote', 'all']),
+  /** command name (free-form, e.g. 'hud.setMode', 'desktop.openProject', 'deploy.web') */
+  command: z.string(),
+  args: z.record(z.string(), z.unknown()).optional(),
+});
+
+/** Cursor presence on a given surface. */
+export const HandoffEvent = z.object({
+  type: z.literal('handoff'),
+  ts: z.number(),
+  surface: z.enum(['desktop', 'xr', 'mobile']),
+  /** which surface should now own the cursor */
+  to: z.enum(['desktop', 'xr', 'mobile']),
+  /** optional context the cursor was last over */
+  context: z.string().optional(),
+});
+
 export const CockpitEventSchema = z.discriminatedUnion('type', [
   HealthEvent,
   BuildEvent,
@@ -91,6 +115,8 @@ export const CockpitEventSchema = z.discriminatedUnion('type', [
   MetricEvent,
   QuotaEvent,
   InputEvent,
+  CommandEvent,
+  HandoffEvent,
 ]);
 
 export type CockpitEvent = z.infer<typeof CockpitEventSchema>;

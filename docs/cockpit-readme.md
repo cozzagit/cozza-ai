@@ -162,18 +162,71 @@ In produzione (via VPS): `POST https://cozza-ai.vibecanyon.com/cockpit/api/auth/
 
 ## Roadmap fasi
 
-| Fase                                                                   | Status                                                |
-| ---------------------------------------------------------------------- | ----------------------------------------------------- |
-| F0 — Workspace + tasks + layouts                                       | ✅ done (questo commit)                               |
-| F1 — Cockpit bus + adapter healthz/git/pm2/quota + WS gateway + tunnel | ✅ done (questo commit)                               |
-| F2 — HUD PWA con 6 modalità + doppio tema                              | ✅ scaffold (questo commit), iter su Stream/Diff      |
-| F3 — Mobile Remote + Trackpad input plane                              | ✅ scaffold (questo commit), iter su Switcher/Actions |
-| F3.5 — Cursor handoff fra superfici                                    | 🔜 next                                               |
-| F4 — Estensione VS Code `cozza-cockpit-vscode`                         | 🔜                                                    |
-| F5 — Multiverse adapter (parser dinamico catalogo)                     | 🔜                                                    |
-| F6 — Scaffolding generator + Code Tour                                 | 🔜                                                    |
-| F7 — XR avanzato (Pomodoro, Heat map, CO₂)                             | 🔜                                                    |
-| F8 — Voice control end-to-end                                          | 🔜                                                    |
+| Fase                                                                   | Status  |
+| ---------------------------------------------------------------------- | ------- |
+| F0 — Workspace + tasks + layouts                                       | ✅ done |
+| F1 — Cockpit bus + adapter healthz/git/pm2/quota + WS gateway + tunnel | ✅ done |
+| F2 — HUD PWA con 8 modalità + doppio tema                              | ✅ done |
+| F3 — Mobile Remote + Trackpad input plane                              | ✅ done |
+| F3.5 — Cursor handoff + command broadcast cross-superfici              | ✅ done |
+| F4 — Estensione VS Code `cozza-cockpit-vscode`                         | ✅ done |
+| F5 — Multiverse adapter + Claude session log adapter                   | ✅ done |
+| F6 — Scaffolding generator (`pnpm new <name>`)                         | ✅ done |
+| F7 — XR avanzato (Pomodoro, Spend/budget API)                          | ✅ done |
+| F8 — Voice command end-to-end (Web Speech IT)                          | ✅ done |
+
+## VS Code extension
+
+Build e usa il `.vsix`:
+
+```pwsh
+pnpm -C packages/cockpit-vscode build
+pnpm -C packages/cockpit-vscode package    # crea cozza-cockpit-vscode.vsix
+code --install-extension packages/cockpit-vscode/cozza-cockpit-vscode.vsix
+```
+
+Comandi command palette principali:
+
+- `Cozza: Open HUD (webview)` — embed dell'HUD dentro VS Code (auto-token via fragment)
+- `Cozza: Switch Layout…` — quickpick fra Mission/Tunnel/Visual/Debug/Ops/Zen
+- `Cozza: Deploy current project` — lancia `bash deploy/deploy.sh` in terminal dedicato
+- `Cozza: Arm input plane` / `Cozza: Disarm input plane` — controlla nut.js
+- `Cozza: Set bus token` — incolla JWT in modo sicuro
+
+Tasti: `Ctrl+K Ctrl+L` → switch layout, `Ctrl+K Ctrl+H` → apri HUD webview.
+
+Status bar: `🛸 cozza · ✓ connected`. Sidebar custom "Cozza Cockpit" con tutti i progetti live, ordinati per stato (down → warn → unknown → ok).
+
+## Voice command (Pixel)
+
+Apri Remote PWA → mode `🎤 Voice` → tap il bottone mic → parla in italiano.
+
+Frasi riconosciute (regex best-effort):
+
+| Dico…                            | Cockpit fa…                    |
+| -------------------------------- | ------------------------------ |
+| vitals / stato / salute / health | HUD → Vitals                   |
+| stream                           | HUD → Stream                   |
+| log / logs                       | HUD → Logs                     |
+| metric / metriche                | HUD → Metrics                  |
+| diff / git                       | HUD → Diff                     |
+| ambient / pausa / relax          | HUD → Ambient                  |
+| pomodoro / pomo                  | HUD → Pomodoro                 |
+| budget / spesa / spend / costo   | HUD → Spend                    |
+| tema / cambia tema               | HUD toggle Cyber↔Bauhaus       |
+| cyber / cyberpunk                | HUD theme = Cyberpunk          |
+| bauhaus / mono                   | HUD theme = Bauhaus            |
+| deploy                           | desktop ext esegue bash deploy |
+| stop / kill                      | killswitch globale             |
+
+## Scaffolding generator
+
+```pwsh
+pnpm new my-new-app --type=pwa --port=3045
+# tipi disponibili: pwa | api | saas | game | mkt
+```
+
+Crea `c:/work/Cozza/<name>/` con README, CLAUDE.md, package.json, tsconfig, .vscode/extensions.json, nginx config preconfigurato per `<name>.vibecanyon.com`.
 
 ## Troubleshooting
 

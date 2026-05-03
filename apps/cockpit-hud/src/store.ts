@@ -2,7 +2,15 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export type ThemeId = 'cyberpunk' | 'bauhaus';
-export type HudMode = 'vitals' | 'stream' | 'logs' | 'diff' | 'metrics' | 'ambient';
+export type HudMode =
+  | 'vitals'
+  | 'stream'
+  | 'logs'
+  | 'diff'
+  | 'metrics'
+  | 'spend'
+  | 'pomodoro'
+  | 'ambient';
 
 interface CockpitState {
   theme: ThemeId;
