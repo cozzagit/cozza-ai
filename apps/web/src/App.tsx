@@ -282,7 +282,7 @@ export default function App() {
             />
             <span className="font-mono text-sm tracking-wide truncate">cozza-ai</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto scrollbar-none -mx-1 px-1">
             <ModelSelector value={defaultModel} onChange={setDefaultModel} disabled={isStreaming} />
             <button
               type="button"
@@ -325,47 +325,6 @@ export default function App() {
                 📱
               </span>
             </a>
-            <button
-              type="button"
-              onClick={() => setAutoEnrichVisuals(!autoEnrichVisuals)}
-              aria-pressed={autoEnrichVisuals}
-              title={
-                autoEnrichVisuals
-                  ? 'Visivi auto attivi (immagini/diagrammi/SVG nelle risposte)'
-                  : 'Visivi auto disattivati (solo testo)'
-              }
-              className={[
-                'focus-accent rounded-md p-2 transition-colors',
-                autoEnrichVisuals
-                  ? 'text-accent hover:bg-accent/10'
-                  : 'text-muted-fg hover:text-white hover:bg-white/5',
-              ].join(' ')}
-            >
-              <span aria-hidden className="text-base">
-                {autoEnrichVisuals ? '🖼️' : '⊘'}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (!ttsAutoplay && !StreamingAudioPlayer.isUnlocked) {
-                  void StreamingAudioPlayer.unlock();
-                }
-                setTtsAutoplay(!ttsAutoplay);
-              }}
-              aria-pressed={ttsAutoplay}
-              title={ttsAutoplay ? 'TTS attivo' : 'TTS muto'}
-              className={[
-                'focus-accent rounded-md p-2 transition-colors',
-                ttsAutoplay
-                  ? 'text-accent hover:bg-accent/10'
-                  : 'text-muted-fg hover:text-white hover:bg-white/5',
-              ].join(' ')}
-            >
-              <span aria-hidden className="text-base">
-                {ttsAutoplay ? '🔊' : '🔇'}
-              </span>
-            </button>
             <a
               href="/admin"
               onClick={(e) => {
@@ -440,10 +399,8 @@ export default function App() {
                   : 'Visivi auto disattivati (solo testo)'
               }
               className={[
-                // Hidden on mobile (toggle is in the topbar there). Desktop
-                // keeps it next to the input for one-hand reach.
-                'hidden sm:flex',
-                'focus-accent shrink-0 rounded-full w-12 h-12 items-center justify-center border',
+                'focus-accent shrink-0 rounded-full flex items-center justify-center border',
+                'w-10 h-10 sm:w-12 sm:h-12 text-base sm:text-lg',
                 autoEnrichVisuals
                   ? 'bg-accent/15 border-accent/40 text-accent'
                   : 'border-white/10 text-muted-fg hover:text-white',
@@ -463,9 +420,8 @@ export default function App() {
               aria-pressed={ttsAutoplay}
               title={ttsAutoplay ? 'TTS attivo' : 'TTS muto'}
               className={[
-                // Same: mobile uses the topbar one, desktop keeps it inline.
-                'hidden sm:flex',
-                'focus-accent shrink-0 rounded-full w-12 h-12 items-center justify-center border',
+                'focus-accent shrink-0 rounded-full flex items-center justify-center border',
+                'w-10 h-10 sm:w-12 sm:h-12 text-base sm:text-lg',
                 ttsAutoplay
                   ? 'bg-accent/15 border-accent/40 text-accent'
                   : 'border-white/10 text-muted-fg hover:text-white',

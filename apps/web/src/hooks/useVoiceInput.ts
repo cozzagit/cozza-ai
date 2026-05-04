@@ -45,8 +45,36 @@ export function useVoiceInput(opts: UseVoiceInputOptions = {}) {
     rec.interimResults = true;
     rec.lang = lang;
 
-    rec.onstart = () => setState('listening');
+    // Accumulators that survive across `onresult` invocations within a
+    // single recognition session. Cleared on `start()`. Used by `onend`
+    // to fall back to the latest interim text if the browser closes the
+    // session before flagging `isFinal=true` (common on Android Chrome
+    // when the user releases the mic button quickly).
+    let lastFinal = '';
+    let lastInterim = '';
+    let alreadyEmitted = false;
+
+    rec.onstart = () => {
+      setState('listening');
+      lastFinal = '';
+      lastInterim = '';
+      alreadyEmitted = false;
+    };
     rec.onend = () => {
+      // If the browser closed the session before emitting a final
+      // transcript, treat the most recent interim as final so the
+      // message actually gets sent. Without this, short utterances
+      // disappear because `rec.stop()` outraces `isFinal=true`.
+      if (!alreadyEmitted) {
+        const fallback = (lastFinal || lastInterim).trim();
+        if (fallback) {
+          alreadyEmitted = true;
+          setInterim('');
+          setState('processing');
+          onFinalResult?.(fallback);
+          return;
+        }
+      }
       setState((s) => (s === 'listening' ? 'idle' : s));
     };
     rec.onerror = () => {
@@ -56,7 +84,9 @@ export function useVoiceInput(opts: UseVoiceInputOptions = {}) {
       // SpeechRecognitionEvent
       const ev = event as Event & {
         resultIndex: number;
-        results: ArrayLike<ArrayLike<{ transcript: string; confidence: number }> & { isFinal: boolean }>;
+        results: ArrayLike<
+          ArrayLike<{ transcript: string; confidence: number }> & { isFinal: boolean }
+        >;
       };
       let interimText = '';
       let finalText = '';
@@ -69,10 +99,13 @@ export function useVoiceInput(opts: UseVoiceInputOptions = {}) {
         else interimText += alt.transcript;
       }
       if (interimText) {
+        lastInterim = interimText;
         setInterim(interimText);
         onInterimResult?.(interimText);
       }
       if (finalText) {
+        lastFinal = finalText;
+        alreadyEmitted = true;
         setInterim('');
         setState('processing');
         onFinalResult?.(finalText.trim());
