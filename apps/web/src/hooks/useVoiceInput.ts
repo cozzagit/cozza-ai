@@ -12,6 +12,7 @@ interface UseVoiceInputOptions {
 interface SpeechRecognitionLike extends EventTarget {
   continuous: boolean;
   interimResults: boolean;
+  maxAlternatives?: number;
   lang: string;
   start(): void;
   stop(): void;
@@ -20,6 +21,13 @@ interface SpeechRecognitionLike extends EventTarget {
   onend: (() => void) | null;
   onerror: ((event: Event) => void) | null;
   onstart: (() => void) | null;
+  onaudiostart?: (() => void) | null;
+  onaudioend?: (() => void) | null;
+  onsoundstart?: (() => void) | null;
+  onsoundend?: (() => void) | null;
+  onspeechstart?: (() => void) | null;
+  onspeechend?: (() => void) | null;
+  onnomatch?: (() => void) | null;
 }
 
 declare global {
@@ -43,8 +51,14 @@ export function useVoiceInput(opts: UseVoiceInputOptions = {}) {
       return;
     }
     const rec = new Ctor();
-    rec.continuous = false;
+    // Push-to-talk: true so the recognition stays open until WE call
+    // stop(). With `false` Chrome auto-closes the session on the first
+    // pause (sometimes within a fraction of a second on PC, before any
+    // audio is captured), which manifests as `recognition ended` with
+    // 0/0 lengths immediately after `recognition started`.
+    rec.continuous = true;
     rec.interimResults = true;
+    rec.maxAlternatives = 1;
     rec.lang = lang;
 
     // Accumulators that survive across `onresult` invocations within a
@@ -63,6 +77,15 @@ export function useVoiceInput(opts: UseVoiceInputOptions = {}) {
       lastInterim = '';
       alreadyEmitted = false;
     };
+    // Diagnostic: log every audio-pipeline phase so we can see exactly
+    // where the recognition stops getting input.
+    rec.onaudiostart = () => log.info('voice', 'audio capture started');
+    rec.onsoundstart = () => log.info('voice', 'sound detected');
+    rec.onspeechstart = () => log.info('voice', 'speech detected');
+    rec.onspeechend = () => log.info('voice', 'speech ended');
+    rec.onsoundend = () => log.info('voice', 'sound ended');
+    rec.onaudioend = () => log.info('voice', 'audio capture ended');
+    rec.onnomatch = () => log.warn('voice', 'no match (recognition heard but cannot transcribe)');
     rec.onend = () => {
       log.info('voice', 'recognition ended', {
         emitted: alreadyEmitted,
