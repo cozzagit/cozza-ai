@@ -102,6 +102,10 @@ export default function App() {
   } = useVoiceInput({
     lang: sttLang,
     onFinalResult: (transcript) => {
+      console.warn('[chat] voice final → sending:', transcript);
+      // Clear the recognised text from the textarea before send so it
+      // doesn't linger as a "ghost" once the message has been posted.
+      setPendingPrompt('');
       void send(transcript);
     },
     onInterimResult: setPendingPrompt,

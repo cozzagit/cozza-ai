@@ -112,7 +112,14 @@ export function Voice({ onCommand }: VoiceProps) {
         // noop
       }
     };
-  }, [onCommand]);
+    // CRITICAL: deps must be empty so the recognition object survives
+    // every render of the parent. Earlier `[onCommand]` caused the
+    // effect to re-run on each parent render (onCommand is inline),
+    // tearing down recognition mid-utterance. Callback access goes
+    // through `handleTranscriptRef.current` (refreshed in the next
+    // useEffect below).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Update the ref each render so the closure inside onresult sees the
   // latest onCommand handler. eslint-disable-next-line so the function
@@ -123,13 +130,16 @@ export function Voice({ onCommand }: VoiceProps) {
   });
 
   const handleTranscript = (text: string): void => {
+    console.warn('[voice] transcript:', text, '| alwaysOn:', alwaysOnRef.current);
     // Always-on flow: split on wake-word boundary
     if (alwaysOnRef.current) {
       const wakeMatch = WAKE_WORD_PATTERN.exec(text);
       if (!wakeMatch) {
+        console.warn('[voice] no wake word in transcript, armed:', armedRef.current);
         // No wake word — ignore unless we were armed for a follow-up
         if (armedRef.current) {
           const cmd = interpret(text);
+          console.warn('[voice] armed follow-up cmd:', cmd);
           if (cmd) {
             haptic();
             onCommand(cmd);
@@ -140,9 +150,11 @@ export function Voice({ onCommand }: VoiceProps) {
       }
       // Wake detected → take everything AFTER the wake word as the command
       const after = text.slice(wakeMatch.index + wakeMatch[0].length).trim();
+      console.warn('[voice] wake matched:', wakeMatch[0], '| after:', after);
       if (after) {
         haptic();
         const cmd = interpret(after);
+        console.warn('[voice] interpreted cmd:', cmd);
         if (cmd) onCommand(cmd);
         setArmed(false);
       } else {
@@ -154,6 +166,7 @@ export function Voice({ onCommand }: VoiceProps) {
     }
     // Push-to-talk legacy: any utterance is a command attempt
     const cmd = interpret(text);
+    console.warn('[voice] push-to-talk cmd:', cmd);
     if (cmd) onCommand(cmd);
   };
 
