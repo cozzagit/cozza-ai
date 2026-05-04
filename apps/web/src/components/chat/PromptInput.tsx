@@ -50,33 +50,32 @@ export function PromptInput({
   };
 
   return (
-    <div className="w-full px-3 pb-3 pt-2">
-      <div className="mx-auto w-full max-w-sweet-lg">
-        <div className="glass-surface rounded-2xl flex items-end gap-2 px-3 py-2 focus-within:border-accent/40 transition-colors">
-          <textarea
-            ref={ref}
-            rows={1}
-            disabled={disabled}
-            value={text}
-            placeholder={placeholder}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={onKey}
-            className="flex-1 resize-none bg-transparent outline-none placeholder:text-muted-fg/60 py-2 px-1 max-h-[200px]"
-          />
-          <button
-            type="button"
-            disabled={disabled || !text.trim()}
-            onClick={submit}
-            aria-label="Invia"
-            className="focus-accent shrink-0 rounded-full bg-accent text-black font-medium px-4 py-2 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
-          >
-            Invia
-          </button>
-        </div>
-        <p className="text-xs text-muted-fg/50 px-2 pt-1.5">
-          Invio per inviare · Shift+Invio per nuova riga
-        </p>
+    <div className="w-full">
+      <div className="glass-surface rounded-2xl flex items-end gap-2 px-3 py-1.5 focus-within:border-accent/40 transition-colors">
+        <textarea
+          ref={ref}
+          rows={1}
+          disabled={disabled}
+          value={text}
+          placeholder={placeholder}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={onKey}
+          className="flex-1 resize-none bg-transparent outline-none placeholder:text-muted-fg/60 py-2 px-1 max-h-[140px] text-base sm:text-sm"
+        />
+        <button
+          type="button"
+          disabled={disabled || !text.trim()}
+          onClick={submit}
+          aria-label="Invia"
+          className="focus-accent shrink-0 rounded-full bg-accent text-black font-medium px-4 h-10 disabled:opacity-30 disabled:cursor-not-allowed transition-opacity"
+        >
+          Invia
+        </button>
       </div>
+      {/* Helper hint shown only on tablet/desktop — eats space on phones. */}
+      <p className="hidden sm:block text-xs text-muted-fg/50 px-2 pt-1">
+        Invio per inviare · Shift+Invio per nuova riga
+      </p>
     </div>
   );
 }

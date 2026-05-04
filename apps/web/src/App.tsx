@@ -10,6 +10,7 @@ import { UpdateBanner } from './components/layout/UpdateBanner';
 import { AudioUnlockBanner } from './components/layout/AudioUnlockBanner';
 import { GlobalAudioControl } from './components/layout/GlobalAudioControl';
 import { AppLauncher } from './components/layout/AppLauncher';
+import { InstallPwaToast } from './components/layout/InstallPwaToast';
 import { ImageRequestDialog } from './components/chat/ImageRequestDialog';
 import { StreamingAudioPlayer } from './lib/audio';
 import { db } from './lib/db';
@@ -324,6 +325,47 @@ export default function App() {
                 📱
               </span>
             </a>
+            <button
+              type="button"
+              onClick={() => setAutoEnrichVisuals(!autoEnrichVisuals)}
+              aria-pressed={autoEnrichVisuals}
+              title={
+                autoEnrichVisuals
+                  ? 'Visivi auto attivi (immagini/diagrammi/SVG nelle risposte)'
+                  : 'Visivi auto disattivati (solo testo)'
+              }
+              className={[
+                'focus-accent rounded-md p-2 transition-colors',
+                autoEnrichVisuals
+                  ? 'text-accent hover:bg-accent/10'
+                  : 'text-muted-fg hover:text-white hover:bg-white/5',
+              ].join(' ')}
+            >
+              <span aria-hidden className="text-base">
+                {autoEnrichVisuals ? '🖼️' : '⊘'}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (!ttsAutoplay && !StreamingAudioPlayer.isUnlocked) {
+                  void StreamingAudioPlayer.unlock();
+                }
+                setTtsAutoplay(!ttsAutoplay);
+              }}
+              aria-pressed={ttsAutoplay}
+              title={ttsAutoplay ? 'TTS attivo' : 'TTS muto'}
+              className={[
+                'focus-accent rounded-md p-2 transition-colors',
+                ttsAutoplay
+                  ? 'text-accent hover:bg-accent/10'
+                  : 'text-muted-fg hover:text-white hover:bg-white/5',
+              ].join(' ')}
+            >
+              <span aria-hidden className="text-base">
+                {ttsAutoplay ? '🔊' : '🔇'}
+              </span>
+            </button>
             <a
               href="/admin"
               onClick={(e) => {
@@ -360,7 +402,7 @@ export default function App() {
               {error}
             </div>
           )}
-          <div className="flex items-center gap-3 px-3 py-3 max-w-sweet-lg mx-auto w-full">
+          <div className="flex items-end gap-2 px-2 sm:px-3 py-2 max-w-sweet-lg mx-auto w-full">
             <VoiceButton
               state={voiceState}
               onPressStart={() => {
@@ -398,7 +440,10 @@ export default function App() {
                   : 'Visivi auto disattivati (solo testo)'
               }
               className={[
-                'focus-accent shrink-0 rounded-full w-12 h-12 flex items-center justify-center border',
+                // Hidden on mobile (toggle is in the topbar there). Desktop
+                // keeps it next to the input for one-hand reach.
+                'hidden sm:flex',
+                'focus-accent shrink-0 rounded-full w-12 h-12 items-center justify-center border',
                 autoEnrichVisuals
                   ? 'bg-accent/15 border-accent/40 text-accent'
                   : 'border-white/10 text-muted-fg hover:text-white',
@@ -418,7 +463,9 @@ export default function App() {
               aria-pressed={ttsAutoplay}
               title={ttsAutoplay ? 'TTS attivo' : 'TTS muto'}
               className={[
-                'focus-accent shrink-0 rounded-full w-12 h-12 flex items-center justify-center border',
+                // Same: mobile uses the topbar one, desktop keeps it inline.
+                'hidden sm:flex',
+                'focus-accent shrink-0 rounded-full w-12 h-12 items-center justify-center border',
                 ttsAutoplay
                   ? 'bg-accent/15 border-accent/40 text-accent'
                   : 'border-white/10 text-muted-fg hover:text-white',
@@ -463,6 +510,7 @@ export default function App() {
       />
       <UpdateBanner />
       <AudioUnlockBanner />
+      <InstallPwaToast />
       <GlobalAudioControl
         isPlaying={ttsPlaying}
         onStop={() => {
