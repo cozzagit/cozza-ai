@@ -55,16 +55,30 @@ export function VoiceButton({ state, onPressStart, onPressEnd }: VoiceButtonProp
       type="button"
       onPointerDown={(e) => {
         e.preventDefault();
+        // Capture the pointer so subsequent move/up events fire on this
+        // button even if the finger drifts outside the 56px hit-area —
+        // crucial on Pixel-class phones where a millimetre of slip
+        // would otherwise abort the recording mid-sentence.
+        try {
+          (e.target as Element).setPointerCapture(e.pointerId);
+        } catch {
+          // not supported on this platform → fall through
+        }
         onPressStart();
       }}
       onPointerUp={(e) => {
         e.preventDefault();
+        try {
+          (e.target as Element).releasePointerCapture(e.pointerId);
+        } catch {
+          // ignore
+        }
         onPressEnd();
       }}
       onPointerCancel={() => onPressEnd()}
-      onPointerLeave={() => {
-        if (listening) onPressEnd();
-      }}
+      // Removed onPointerLeave: with pointer capture the up event always
+      // fires here, so leave-while-listening would close the recording
+      // prematurely.
       aria-label={listening ? 'Sto ascoltando, rilascia per inviare' : 'Tieni premuto per parlare'}
       aria-pressed={listening}
       className={[

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { log } from '@/lib/debug-log';
 
 export type VoiceState = 'idle' | 'listening' | 'processing' | 'unsupported';
 
@@ -37,6 +38,7 @@ export function useVoiceInput(opts: UseVoiceInputOptions = {}) {
   useEffect(() => {
     const Ctor = window.SpeechRecognition ?? window.webkitSpeechRecognition;
     if (!Ctor) {
+      log.warn('voice', 'SpeechRecognition not supported in this browser');
       setState('unsupported');
       return;
     }
@@ -55,12 +57,18 @@ export function useVoiceInput(opts: UseVoiceInputOptions = {}) {
     let alreadyEmitted = false;
 
     rec.onstart = () => {
+      log.info('voice', 'recognition started', { lang });
       setState('listening');
       lastFinal = '';
       lastInterim = '';
       alreadyEmitted = false;
     };
     rec.onend = () => {
+      log.info('voice', 'recognition ended', {
+        emitted: alreadyEmitted,
+        finalLen: lastFinal.length,
+        interimLen: lastInterim.length,
+      });
       // If the browser closed the session before emitting a final
       // transcript, treat the most recent interim as final so the
       // message actually gets sent. Without this, short utterances
@@ -71,13 +79,22 @@ export function useVoiceInput(opts: UseVoiceInputOptions = {}) {
           alreadyEmitted = true;
           setInterim('');
           setState('processing');
+          log.info('voice', 'flushing interim as final', { len: fallback.length });
           onFinalResult?.(fallback);
           return;
         }
       }
       setState((s) => (s === 'listening' ? 'idle' : s));
     };
-    rec.onerror = () => {
+    rec.onerror = (event: Event) => {
+      // SpeechRecognitionError carries `error` ('no-speech', 'audio-capture',
+      // 'not-allowed', 'network', 'aborted', 'language-not-supported', …)
+      const err = (event as Event & { error?: string; message?: string }).error;
+      const msg = (event as Event & { error?: string; message?: string }).message;
+      log.error('voice', `recognition error: ${err ?? 'unknown'}`, {
+        error: err,
+        message: msg,
+      });
       setState('idle');
     };
     rec.onresult = (event: Event) => {
@@ -125,16 +142,40 @@ export function useVoiceInput(opts: UseVoiceInputOptions = {}) {
 
   const start = useCallback(() => {
     const rec = recRef.current;
-    if (!rec) return;
+    if (!rec) {
+      log.warn('voice', 'start ignored: recognition not initialised');
+      return;
+    }
+    log.info('voice', 'start requested');
+    // Pre-warm microphone permission. Web Speech on Android Chrome
+    // sometimes silently no-ops the very first start() until
+    // getUserMedia has been resolved at least once in the session.
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+      navigator.mediaDevices
+        .getUserMedia({ audio: true })
+        .then((stream) => {
+          // We don't need the audio stream — Web Speech opens its own —
+          // but we keep the permission warmed. Release immediately.
+          stream.getTracks().forEach((t) => t.stop());
+        })
+        .catch((err: unknown) => {
+          log.error('voice', 'getUserMedia denied', {
+            err: err instanceof Error ? err.message : String(err),
+          });
+        });
+    }
     try {
       setInterim('');
       rec.start();
-    } catch {
-      // already started
+    } catch (e) {
+      log.warn('voice', 'rec.start() threw (probably already running)', {
+        err: e instanceof Error ? e.message : 'unknown',
+      });
     }
   }, []);
 
   const stop = useCallback(() => {
+    log.info('voice', 'stop requested');
     recRef.current?.stop();
   }, []);
 
