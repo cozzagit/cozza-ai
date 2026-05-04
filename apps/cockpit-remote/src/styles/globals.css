@@ -5,6 +5,10 @@
 @layer base {
   :root {
     color-scheme: dark;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
   }
   html,
   body,
@@ -17,6 +21,13 @@
   }
   body {
     font-family: 'Geist', system-ui, sans-serif;
+    padding-top: var(--safe-top);
+    padding-left: var(--safe-left);
+    padding-right: var(--safe-right);
+  }
+  /* Bottom nav is fixed-positioned: keep gesture-bar clearance there */
+  nav.fixed.bottom-0 {
+    padding-bottom: var(--safe-bottom);
   }
   ::-webkit-scrollbar {
     width: 0;

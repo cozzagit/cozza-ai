@@ -52,6 +52,58 @@ for (const t of tasks) {
   console.warn(`  ✓ ${t.file} (${t.size}x${t.size})`);
 }
 
+// ─── Screenshots for the Android 14+ "rich install UI" ──────────
+// Generated programmatically from the brand SVG: full-bleed black
+// background, large logo top-center, descriptive label below, in
+// the official cozza-ai cyan. Covers both narrow (mobile, portrait)
+// and wide (landscape) form factors required by the manifest.
+const screenshotSpecs = [
+  {
+    file: 'screenshot-mobile.png',
+    w: 1080,
+    h: 1920,
+    title: 'cozza-ai',
+    subtitle: 'Personal Cockpit AI',
+    line: 'Chat · Voice · Visivi · Cockpit',
+  },
+  {
+    file: 'screenshot-wide.png',
+    w: 1920,
+    h: 1080,
+    title: 'cozza-ai · cockpit',
+    subtitle: 'Telemetria multi-progetto',
+    line: '25+ progetti · HUD · Devstation · Voice',
+  },
+];
+
+for (const s of screenshotSpecs) {
+  const logoSize = Math.min(s.w, s.h) * 0.32;
+  const logoX = (s.w - logoSize) / 2;
+  const logoY = s.h * 0.18;
+  const logoBuf = await sharp(ANY_SVG).resize(Math.round(logoSize), Math.round(logoSize)).png().toBuffer();
+
+  const titleY = logoY + logoSize + s.h * 0.06;
+  const subtitleY = titleY + s.h * 0.045;
+  const lineY = subtitleY + s.h * 0.04;
+
+  const textSvg = `<svg width="${s.w}" height="${s.h}" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100%" height="100%" fill="#000000"/>
+  <text x="50%" y="${titleY}" text-anchor="middle" font-family="Inter, Geist, system-ui, sans-serif"
+        font-weight="800" font-size="${s.w * 0.06}" fill="#00E5FF" letter-spacing="-2">${s.title}</text>
+  <text x="50%" y="${subtitleY}" text-anchor="middle" font-family="Inter, Geist, system-ui, sans-serif"
+        font-weight="400" font-size="${s.w * 0.025}" fill="#FFFFFF" opacity="0.85">${s.subtitle}</text>
+  <text x="50%" y="${lineY}" text-anchor="middle" font-family="JetBrains Mono, Geist Mono, monospace"
+        font-weight="500" font-size="${s.w * 0.018}" fill="#00E5FF" opacity="0.6">${s.line}</text>
+</svg>`;
+
+  const out = join(OUT_DIR, s.file);
+  await sharp(Buffer.from(textSvg))
+    .composite([{ input: logoBuf, left: Math.round(logoX), top: Math.round(logoY) }])
+    .png({ compressionLevel: 9 })
+    .toFile(out);
+  console.warn(`  ✓ ${s.file} (${s.w}x${s.h})`);
+}
+
 // Favicon — copy 32x32 PNG as favicon.png + the same as ico fallback for older browsers
 const FAVICON_PNG = join(ROOT, 'apps/web/public/favicon.png');
 await sharp(ANY_SVG).resize(64, 64).png({ compressionLevel: 9 }).toFile(FAVICON_PNG);
