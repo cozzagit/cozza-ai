@@ -43,6 +43,18 @@ export function useVoiceInput(opts: UseVoiceInputOptions = {}) {
   const [interim, setInterim] = useState('');
   const recRef = useRef<SpeechRecognitionLike | null>(null);
 
+  // CRITICAL: callbacks stored in refs so the useEffect below depends
+  // ONLY on `lang` (a string) and never tears down the recognition
+  // object across renders. Earlier we depended on the inline
+  // `onFinalResult`/`onInterimResult` functions, which changed identity
+  // every render, so as soon as `start()` flipped state to 'listening'
+  // the parent re-rendered, the effect ran cleanup → `rec.abort()` →
+  // recognition ended within ~50ms before any audio was captured.
+  const onFinalRef = useRef(onFinalResult);
+  const onInterimRef = useRef(onInterimResult);
+  onFinalRef.current = onFinalResult;
+  onInterimRef.current = onInterimResult;
+
   useEffect(() => {
     const Ctor = window.SpeechRecognition ?? window.webkitSpeechRecognition;
     if (!Ctor) {
@@ -103,7 +115,7 @@ export function useVoiceInput(opts: UseVoiceInputOptions = {}) {
           setInterim('');
           setState('processing');
           log.info('voice', 'flushing interim as final', { len: fallback.length });
-          onFinalResult?.(fallback);
+          onFinalRef.current?.(fallback);
           return;
         }
       }
@@ -141,14 +153,14 @@ export function useVoiceInput(opts: UseVoiceInputOptions = {}) {
       if (interimText) {
         lastInterim = interimText;
         setInterim(interimText);
-        onInterimResult?.(interimText);
+        onInterimRef.current?.(interimText);
       }
       if (finalText) {
         lastFinal = finalText;
         alreadyEmitted = true;
         setInterim('');
         setState('processing');
-        onFinalResult?.(finalText.trim());
+        onFinalRef.current?.(finalText.trim());
       }
     };
 
@@ -161,7 +173,10 @@ export function useVoiceInput(opts: UseVoiceInputOptions = {}) {
       }
       recRef.current = null;
     };
-  }, [lang, onFinalResult, onInterimResult]);
+    // Deps: ONLY lang. Callbacks are reached via refs (onFinalRef /
+    // onInterimRef) so identity changes don't trigger re-init.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
 
   const start = useCallback(() => {
     const rec = recRef.current;
