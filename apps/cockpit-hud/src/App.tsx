@@ -77,6 +77,10 @@ export function App() {
 
   const { connected, events, error, send } = useCockpitBus(500);
 
+  // App.open with DRM sites that Chrome's popup blocker refuses goes
+  // here — the toast turns the deferred URL into a user-gesture tap.
+  const [pendingApp, setPendingApp] = useState<{ url: string; label: string } | null>(null);
+
   // React to remote `command` events — this is how Pixel/voice tells the HUD
   // to switch mode, change theme, etc. We dedupe by id and process the most
   // recent command in the buffer. Listening on `events` (capped) is fine
@@ -106,9 +110,17 @@ export function App() {
       if (!target) return;
       const drm = APP_PRESETS[preset]?.drm ?? false;
       if (drm) {
-        // X-Frame-Options DENY on Netflix/DAZN/Prime/Disney → open in
-        // new tab; the user navigates with native browser controls.
-        window.open(target, '_blank', 'noopener,noreferrer');
+        // Sites with X-Frame-Options DENY (Netflix/DAZN/Prime/Disney+)
+        // can't be embedded. We try `window.open(_blank)` but Chrome
+        // blocks pop-ups not triggered by a direct user gesture, and a
+        // WebSocket-driven open IS such a case. So we show a tap-to-open
+        // notification overlay; the user's tap counts as the gesture
+        // Chrome wants and the popup goes through.
+        const opened = window.open(target, '_blank', 'noopener,noreferrer');
+        const blocked = !opened || opened.closed || typeof opened.closed === 'undefined';
+        if (blocked) {
+          setPendingApp({ url: target, label: APP_PRESETS[preset]?.label ?? preset });
+        }
       } else {
         // Embed-friendly: switch to Devstation single-cell with the
         // app URL as the only slot, full immersion.
@@ -170,6 +182,65 @@ export function App() {
       </main>
       <PointerOverlay />
       <DebugOverlay />
+      {pendingApp && (
+        <PopupBlockedToast
+          label={pendingApp.label}
+          url={pendingApp.url}
+          onClose={() => setPendingApp(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Notification shown when Chrome's popup blocker refuses a window.open
+ * triggered by a WebSocket message. The Open button click IS a real
+ * user gesture, so this time the popup goes through.
+ */
+function PopupBlockedToast({
+  label,
+  url,
+  onClose,
+}: {
+  label: string;
+  url: string;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-label={`Apri ${label}`}
+      className="fixed inset-x-3 bottom-6 sm:inset-x-auto sm:right-6 sm:left-auto sm:max-w-md z-[70] surface rounded-2xl p-4 shadow-2xl border border-accent/40 flex items-center gap-3 animate-fade-in"
+    >
+      <div className="text-3xl shrink-0" aria-hidden>
+        🛸
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="font-semibold text-sm">Apri {label}</div>
+        <div className="text-xs opacity-70 mt-0.5">
+          Chrome ha bloccato il popup automatico. Tap per aprire.
+        </div>
+      </div>
+      <div className="flex items-center gap-1 shrink-0">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Chiudi"
+          className="text-muted-fg/70 hover:text-white text-xl leading-none px-2 py-1"
+        >
+          ×
+        </button>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => setTimeout(onClose, 200)}
+          className="focus-accent rounded-full bg-accent text-black font-medium px-4 py-2 text-sm no-underline"
+        >
+          Apri →
+        </a>
+      </div>
     </div>
   );
 }
