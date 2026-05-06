@@ -26,6 +26,22 @@ export function App() {
     document.documentElement.classList.add('theme-cyberpunk');
   }, []);
 
+  // ?logout=1 → wipe stored token. Same as on the HUD; lets the user
+  // reset auth without going into Chrome's site settings.
+  useEffect(() => {
+    const u = new URL(window.location.href);
+    if (u.searchParams.get('logout') === '1') {
+      setToken('');
+      try {
+        localStorage.removeItem('cozza-cockpit-remote');
+      } catch {
+        // ignore
+      }
+      u.searchParams.delete('logout');
+      history.replaceState(null, '', u.pathname + (u.search ? u.search : ''));
+    }
+  }, [setToken]);
+
   // Auto-switch when the cockpit broadcasts a remote.setMode command.
   // Triggered by "ehi cozza metti netflix" → HUD opens the app and tells
   // the Pixel to switch to the right input mode (D-pad for TV-like UIs).
@@ -154,9 +170,29 @@ function Header({ connected }: { connected: boolean }) {
         ← Chat
       </a>
       <div className="display text-base glow-cyan truncate">📱 COZZA · REMOTE</div>
-      <span className={connected ? 'pill pill-ok shrink-0' : 'pill pill-down shrink-0'}>
-        {connected ? '● online' : '○ offline'}
-      </span>
+      <div className="flex items-center gap-1 shrink-0">
+        <span className={connected ? 'pill pill-ok' : 'pill pill-down'}>
+          {connected ? '● online' : '○ offline'}
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            if (!confirm('Disconnetti dal cockpit-bus e cancella il token?')) return;
+            useRemoteStore.getState().setToken('');
+            try {
+              localStorage.removeItem('cozza-cockpit-remote');
+            } catch {
+              // ignore
+            }
+            window.location.reload();
+          }}
+          className="pill pill-unknown"
+          title="Disconnetti (cancella token)"
+          aria-label="Logout"
+        >
+          🚪
+        </button>
+      </div>
     </header>
   );
 }

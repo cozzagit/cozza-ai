@@ -59,6 +59,22 @@ export function App() {
     }
   }, [token, setToken]);
 
+  // ?logout=1 → wipe token and any cached cockpit state. Lets the user
+  // disconnect without opening DevTools to clear localStorage by hand.
+  useEffect(() => {
+    const u = new URL(window.location.href);
+    if (u.searchParams.get('logout') === '1') {
+      setToken('');
+      try {
+        localStorage.removeItem('cozza-cockpit-hud');
+      } catch {
+        // ignore
+      }
+      u.searchParams.delete('logout');
+      history.replaceState(null, '', u.pathname + (u.search ? u.search : ''));
+    }
+  }, [setToken]);
+
   const { connected, events, error, send } = useCockpitBus(500);
 
   // React to remote `command` events — this is how Pixel/voice tells the HUD
@@ -194,6 +210,24 @@ function Header({
           title="Cambia tema (t)"
         >
           {theme === 'cyberpunk' ? '⚪ Bauhaus' : '🌆 Cyber'}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (!confirm('Disconnetti dal cockpit-bus e cancella il token?')) return;
+            useCockpitStore.getState().setToken('');
+            try {
+              localStorage.removeItem('cozza-cockpit-hud');
+            } catch {
+              // ignore
+            }
+            window.location.reload();
+          }}
+          className="pill pill-unknown hover:opacity-80"
+          title="Disconnetti (cancella token)"
+          aria-label="Logout"
+        >
+          🚪
         </button>
       </div>
     </header>
