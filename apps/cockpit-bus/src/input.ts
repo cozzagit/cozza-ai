@@ -78,13 +78,14 @@ async function ensureNut(): Promise<NutModule | null> {
     const mod = (await import(modName)) as unknown as NutModule;
     nut = mod;
     nut.mouse.config.mouseSpeed = 1500;
+    console.warn('[cockpit-bus] nut.js loaded successfully — native cursor control armed');
     return nut;
-  } catch {
+  } catch (e) {
     if (!warned) {
       warned = true;
       console.warn(
-        '[cockpit-bus] @nut-tree-fork/nut-js not installed — input plane disabled. ' +
-          'Run: pnpm --filter cockpit-bus add @nut-tree-fork/nut-js',
+        '[cockpit-bus] @nut-tree-fork/nut-js failed to load:',
+        e instanceof Error ? e.message : String(e),
       );
     }
     return null;

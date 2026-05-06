@@ -45,6 +45,13 @@ export function PointerOverlay() {
           if (f.kind !== 'event' || f.event?.type !== 'input') return;
           const k = f.event.kind;
           const p = f.event.payload ?? {};
+          // Only react to events explicitly addressed to the HUD (or
+          // 'all'). When the user routes the trackpad to the PC native
+          // cursor (target='pc') we MUST stay out so they actually see
+          // the Windows cursor moving instead of a duplicate inside
+          // the viewport.
+          const tgt = (p as { _target?: string })._target ?? 'hud';
+          if (tgt !== 'hud' && tgt !== 'all') return;
           if (k === 'mouseMove') {
             handleMove(p);
           } else if (k === 'mouseClick') {

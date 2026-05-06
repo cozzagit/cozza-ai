@@ -119,20 +119,26 @@ export function mountWs(server: Server): void {
       case 'input': {
         const p = frame.payload ?? {};
         const target = frame.target ?? 'pc'; // default backwards-compat
-        // Always broadcast input events on the bus so HUD/Remote/etc.
-        // listening clients (e.g. PointerOverlay in HUD) can react.
-        bus.emitEvent({
-          type: 'input',
-          ts: Date.now(),
-          kind: (frame.type ?? 'mouseMove') as
-            | 'mouseMove'
-            | 'mouseClick'
-            | 'mouseScroll'
-            | 'keyDown'
-            | 'keyUp'
-            | 'macro',
-          payload: p,
-        });
+        // Broadcast on the bus only when the target involves the HUD
+        // overlay. With target='pc' the PointerOverlay must NOT react
+        // (otherwise the user sees the software cursor moving inside
+        // the HUD viewport instead of the real Windows cursor).
+        if (target === 'hud' || target === 'all' || target === 'remote' || target === 'desktop') {
+          bus.emitEvent({
+            type: 'input',
+            ts: Date.now(),
+            kind: (frame.type ?? 'mouseMove') as
+              | 'mouseMove'
+              | 'mouseClick'
+              | 'mouseScroll'
+              | 'keyDown'
+              | 'keyUp'
+              | 'macro',
+            // Mirror the target into the payload so listeners can
+            // additionally filter (e.g. PointerOverlay only on 'hud').
+            payload: { ...p, _target: target },
+          });
+        }
         // PC-targeted events also drive nut.js (real cursor on home PC).
         if (target === 'pc' || target === 'all') {
           if (!hasScope(c.claims, 'input:write')) {
