@@ -1,5 +1,19 @@
+import { appendFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 import { bus } from './bus.js';
 import { config } from './config.js';
+
+// File-based diagnostic log dedicated to nut.js: pwsh transcripts in
+// scheduled tasks don't capture stdout reliably, so we write directly.
+const NUT_LOG = join(homedir(), '.config', 'cozza-cockpit', 'nut.log');
+function nlog(line: string): void {
+  try {
+    appendFileSync(NUT_LOG, `${new Date().toISOString()} ${line}\n`);
+  } catch {
+    // ignore — log file unavailable
+  }
+}
 
 /**
  * Input plane — turns the Pixel into a remote mouse/keyboard.
@@ -40,7 +54,12 @@ interface KeyPayload {
 
 let armed = config.inputEnabled;
 let lastEventAt = Date.now();
-const IDLE_MS = 3 * 60_000;
+// Auto-disarm after this much idle. Was 3min — too aggressive: the
+// user had to re-arm via API every time they took a coffee break and
+// the cursor "stopped working" without obvious cause. 1 hour balances
+// security (still gates against forgotten-armed sessions) against
+// usability (a normal work session keeps the input plane live).
+const IDLE_MS = 60 * 60_000;
 
 interface NutModule {
   mouse: {
@@ -69,24 +88,21 @@ let warned = false;
 
 async function ensureNut(): Promise<NutModule | null> {
   if (nut) return nut;
+  nlog('ensureNut: import attempt');
   try {
-    // dynamic import; the package is an optional dep so missing it just
-    // disables the input plane gracefully.
-    // Optional native dep — keep the import string opaque to TS so we
-    // don't need a `.d.ts` shim when the package isn't installed.
-    const modName = '@nut-tree-fork/' + 'nut-js';
-    const mod = (await import(modName)) as unknown as NutModule;
+    const mod = (await import('@nut-tree-fork/nut-js')) as unknown as NutModule;
     nut = mod;
     nut.mouse.config.mouseSpeed = 1500;
+    nlog('ensureNut: SUCCESS — module keys=' + Object.keys(mod).slice(0, 5).join(','));
     console.warn('[cockpit-bus] nut.js loaded successfully — native cursor control armed');
     return nut;
   } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const stack = e instanceof Error ? (e.stack ?? '') : '';
+    nlog('ensureNut: FAILED — ' + msg + ' | stack: ' + stack.split('\n').slice(0, 3).join(' | '));
     if (!warned) {
       warned = true;
-      console.warn(
-        '[cockpit-bus] @nut-tree-fork/nut-js failed to load:',
-        e instanceof Error ? e.message : String(e),
-      );
+      console.warn('[cockpit-bus] @nut-tree-fork/nut-js failed to load:', msg);
     }
     return null;
   }
@@ -112,17 +128,34 @@ function touch(): void {
 }
 
 export async function dispatchMouseMove(p: MouseMovePayload): Promise<void> {
-  if (!armed) return;
-  const n = await ensureNut();
-  if (!n) return;
-  touch();
-  if (typeof p.absX === 'number' && typeof p.absY === 'number') {
-    await n.mouse.setPosition(new n.Point(p.absX, p.absY));
+  nlog(`dispatchMouseMove called: armed=${armed} payload=${JSON.stringify(p)}`);
+  if (!armed) {
+    nlog('  → DROP: input plane disarmed');
     return;
   }
-  if (typeof p.dx === 'number' || typeof p.dy === 'number') {
-    const cur = await n.mouse.getPosition();
-    await n.mouse.setPosition(new n.Point(cur.x + (p.dx ?? 0), cur.y + (p.dy ?? 0)));
+  const n = await ensureNut();
+  if (!n) {
+    nlog('  → DROP: nut.js not available');
+    return;
+  }
+  touch();
+  try {
+    if (typeof p.absX === 'number' && typeof p.absY === 'number') {
+      await n.mouse.setPosition(new n.Point(p.absX, p.absY));
+      nlog(`  → setPosition abs(${p.absX},${p.absY}) OK`);
+      return;
+    }
+    if (typeof p.dx === 'number' || typeof p.dy === 'number') {
+      const cur = await n.mouse.getPosition();
+      await n.mouse.setPosition(new n.Point(cur.x + (p.dx ?? 0), cur.y + (p.dy ?? 0)));
+      nlog(
+        `  → setPosition rel(${p.dx ?? 0},${p.dy ?? 0}) from (${cur.x},${cur.y}) → (${cur.x + (p.dx ?? 0)},${cur.y + (p.dy ?? 0)}) OK`,
+      );
+    }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    nlog('  → THREW: ' + msg);
+    console.warn('[cockpit-bus] dispatchMouseMove threw:', msg);
   }
 }
 
