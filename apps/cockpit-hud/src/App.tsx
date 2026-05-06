@@ -11,6 +11,7 @@ import { Pomodoro } from './modes/Pomodoro';
 import { Spend } from './modes/Spend';
 import { Devstation } from './modes/Devstation';
 import { PointerOverlay } from './PointerOverlay';
+import { DebugOverlay } from './DebugOverlay';
 
 /**
  * App presets reachable from voice / Pixel ("ehi cozza, metti netflix").
@@ -75,6 +76,7 @@ export function App() {
     lastCmdRef.current = id;
     const command = String(cmd.command ?? '');
     const args = (cmd.args ?? {}) as Record<string, unknown>;
+    console.warn('[hud] command received:', { id, target, command, args });
     if (command === 'hud.setMode' && typeof args.mode === 'string') {
       setMode(args.mode as HudMode);
     } else if (command === 'hud.toggleTheme') {
@@ -151,6 +153,7 @@ export function App() {
         {mode === 'ambient' && <Ambient />}
       </main>
       <PointerOverlay />
+      <DebugOverlay />
     </div>
   );
 }

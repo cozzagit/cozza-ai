@@ -4,6 +4,7 @@ import { useCockpitBus, type CockpitEvent } from './bus';
 import { Trackpad } from './Trackpad';
 import { Voice } from './Voice';
 import { Dpad } from './Dpad';
+import { DebugOverlay } from './DebugOverlay';
 
 const MODES: { id: RemoteMode; icon: string; label: string }[] = [
   { id: 'home', icon: '◉', label: 'Home' },
@@ -134,6 +135,7 @@ export function App() {
         )}
       </main>
       <BottomNav current={mode} onChange={setMode} />
+      <DebugOverlay />
     </div>
   );
 }
