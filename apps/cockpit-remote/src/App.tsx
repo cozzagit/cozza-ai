@@ -123,13 +123,15 @@ export function App() {
         {mode === 'voice' && (
           <Voice
             onCommand={(cmd) => {
-              vibrate(12);
-              send({
+              const frame = {
                 kind: 'broadcast',
                 target: cmd.target,
                 command: cmd.command,
                 ...(cmd.args ? { args: cmd.args } : {}),
-              });
+              };
+              console.warn('[remote] onCommand → broadcast', { connected, frame });
+              vibrate(12);
+              send(frame);
             }}
           />
         )}

@@ -283,17 +283,18 @@ const APP_INTENT_MAP: Array<{ pattern: RegExp; preset: string }> = [
 ];
 
 /**
- * Match phrases like "metti netflix", "guardiamo dazn", "apri youtube",
- * "metti su prime", "lancia spotify". Returns the matched preset or null.
+ * Lossy app-name detector. Any utterance that contains an app name
+ * triggers the preset — no required action verb. This survives small
+ * mis-transcriptions ("metti netflix" / "netflics" / "Hey cozza
+ * netflix"). The action verb gate was producing too many null returns.
  */
 function matchAppOpen(t: string): string | null {
-  if (!/\b(metti|apri|avvia|lancia|guardiamo|guarda|fai\s*partire|metti\s*su|vai\s*su)\b/.test(t)) {
-    // Allow bare "netflix" too if surrounding cue absent — user might
-    // just say the app name. Only triggers if no other intent matched.
-    for (const it of APP_INTENT_MAP) if (it.pattern.test(t)) return it.preset;
-    return null;
+  for (const it of APP_INTENT_MAP) {
+    if (it.pattern.test(t)) {
+      console.warn('[voice] matchAppOpen hit', { pattern: it.pattern.source, preset: it.preset });
+      return it.preset;
+    }
   }
-  for (const it of APP_INTENT_MAP) if (it.pattern.test(t)) return it.preset;
   return null;
 }
 
