@@ -31,7 +31,27 @@ export function Trackpad({ onMove, onClick, onScroll }: TrackpadProps) {
     accumDy: 0,
     accumScrollDy: 0,
     longPressTimer: 0,
+    // For acceleration: track timestamp of last move event so we can
+    // estimate finger speed in px/ms.
+    lastMoveTs: 0,
   });
+
+  /**
+   * Acceleration curve: a slow drag of the finger gives precise control
+   * (multiplier ≈ 1.0), a quick swipe boosts the cursor (multiplier up
+   * to ~3x). Mirrors how macOS / Windows Precision trackpads feel —
+   * crucial because a phone's 6-inch glass needs to drive a 27"+ desktop.
+   *
+   *   speed (px/ms)   →   accel
+   *      0.0–0.3              1.0
+   *      0.3–1.0              1.0..2.0  (linear)
+   *      1.0+                 2.0..3.5  (saturating)
+   */
+  const acceleration = (speedPxPerMs: number): number => {
+    if (speedPxPerMs <= 0.3) return 1.0;
+    if (speedPxPerMs <= 1.0) return 1.0 + (speedPxPerMs - 0.3) * (1.0 / 0.7);
+    return Math.min(3.5, 2.0 + (speedPxPerMs - 1.0) * 0.6);
+  };
 
   const flush = (): void => {
     const s = state.current;
@@ -70,8 +90,17 @@ export function Trackpad({ onMove, onClick, onScroll }: TrackpadProps) {
     p.y = e.clientY;
 
     if (s.pointers.size === 1) {
-      s.accumDx += dx * sens;
-      s.accumDy += dy * sens;
+      // Apply acceleration based on finger speed (delta over time since
+      // last move). Faster swipe → larger cursor jump. Slow drag stays
+      // 1:1 for precise selection.
+      const now = Date.now();
+      const dt = Math.max(1, now - (s.lastMoveTs || now));
+      s.lastMoveTs = now;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const speed = distance / dt;
+      const accel = acceleration(speed);
+      s.accumDx += dx * sens * accel;
+      s.accumDy += dy * sens * accel;
     } else if (s.pointers.size === 2) {
       // average dy across pointers for scroll
       s.accumScrollDy += dy * 0.5;

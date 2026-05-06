@@ -28,7 +28,9 @@ export const useRemoteStore = create<RemoteState>()(
       mode: 'home',
       token: '',
       busUrl: DEFAULT_BUS_URL,
-      trackpadSensitivity: 1.5,
+      // Default 2.0 + acceleration curve in Trackpad.tsx scales the
+      // 6-inch phone glass to a 27"+ desktop with one-swipe coverage.
+      trackpadSensitivity: 2.0,
       trackpadTarget: 'hud',
       setMode: (m) => set({ mode: m }),
       setToken: (t) => set({ token: t }),

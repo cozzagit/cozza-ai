@@ -276,6 +276,8 @@ interface TrackpadViewProps {
 function TrackpadView({ onMove, onClick, onScroll, onKill }: TrackpadViewProps) {
   const target = useRemoteStore((s) => s.trackpadTarget);
   const setTarget = useRemoteStore((s) => s.setTrackpadTarget);
+  const sens = useRemoteStore((s) => s.trackpadSensitivity);
+  const setSens = useRemoteStore((s) => s.setSensitivity);
   return (
     <div className="space-y-2">
       <div role="radiogroup" className="flex gap-1 p-1 surface rounded-full text-xs">
@@ -293,6 +295,20 @@ function TrackpadView({ onMove, onClick, onScroll, onKill }: TrackpadViewProps) 
         >
           💻 PC casa
         </button>
+      </div>
+      <div className="flex items-center gap-2 px-1 text-xs font-mono">
+        <span className="opacity-60 shrink-0">veloc.</span>
+        <input
+          type="range"
+          min={1}
+          max={5}
+          step={0.5}
+          value={sens}
+          onChange={(e) => setSens(Number(e.target.value))}
+          className="flex-1 accent-accent"
+          aria-label="Sensibilità trackpad"
+        />
+        <span className="font-semibold w-10 text-right">{sens.toFixed(1)}x</span>
       </div>
       <Trackpad onMove={onMove} onClick={onClick} onScroll={onScroll} />
       <div className="grid grid-cols-3 gap-2">
