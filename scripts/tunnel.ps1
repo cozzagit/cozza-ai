@@ -47,6 +47,22 @@ if (-not $busUp) {
   Write-Host "   (Il tunnel resta su comunque, il bus puo' partire dopo.)" -ForegroundColor DarkGray
 }
 
+# Pre-clean: kill any zombie sshd holding :$RemotePort on the VPS.
+# Without this, our reverse forward fails with "remote port forwarding
+# failed" because a stale sshd from a previous session still owns the
+# port. Uses the admin key (~/.ssh/aruba_vps) since the cockpit key is
+# scope-restricted (no shell). Best-effort: ignore failures.
+$adminKey = "$env:USERPROFILE\.ssh\aruba_vps"
+if (Test-Path $adminKey) {
+  try {
+    Write-Host "▶ Cleaning stale tunnels on VPS:$RemotePort…" -ForegroundColor DarkGray
+    & ssh -i $adminKey -o ConnectTimeout=5 -o StrictHostKeyChecking=accept-new "$VpsUser@$VpsHost" `
+      "pids=`$(ss -tlnp 2>/dev/null | grep ':$RemotePort' | grep -oP 'pid=\K[0-9]+' | sort -u); for p in `$pids; do kill -9 `$p 2>/dev/null; done; sleep 1; ss -tlnp | grep ':$RemotePort' || echo CLEAN"
+  } catch {
+    Write-Host "  (clean step skipped: $_)" -ForegroundColor DarkGray
+  }
+}
+
 # autossh = ssh con auto-restart on disconnect.
 # Se non installato, fallback a ssh -N nudo (riconnessione manuale).
 $autossh = (Get-Command autossh -ErrorAction SilentlyContinue)?.Source
