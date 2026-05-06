@@ -11,7 +11,7 @@
 # Lancio come servizio: nssm install cozza-cockpit-tunnel pwsh.exe -File ...
 
 param(
-  [int]   $LocalPort  = 3030,
+  [int]   $LocalPort  = 3035,
   [int]   $RemotePort = 3031,
   [string]$VpsHost    = '188.213.170.214',
   [string]$VpsUser    = 'root',
